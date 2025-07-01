@@ -1,0 +1,137 @@
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #6dd5ed 0%, #2193b0 100%);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.main-menu {
+  background: rgba(255,255,255,0.9);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  padding: 48px 32px;
+  text-align: center;
+}
+
+.main-menu h1 {
+  font-size: 2.5rem;
+  margin-bottom: 32px;
+  color: #2193b0;
+  letter-spacing: 2px;
+}
+
+.main-menu button {
+  display: block;
+  width: 220px;
+  margin: 16px auto;
+  padding: 16px 0;
+  font-size: 1.2rem;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.main-menu button:hover {
+  background: linear-gradient(90deg, #185a9d 0%, #43cea2 100%);
+  transform: translateY(-2px) scale(1.04);
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+#game-canvas {
+  display: block;
+  margin: 0 auto;
+  background: #e3f6fd;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+#pause-menu {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255,255,255,0.98);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 36px 32px;
+  text-align: center;
+  z-index: 10;
+}
+
+#pause-menu.hidden {
+  display: none;
+}
+
+#pause-menu h2 {
+  margin-bottom: 24px;
+  color: #2193b0;
+}
+
+#pause-menu button {
+  margin: 12px 0;
+  width: 160px;
+  padding: 12px 0;
+  font-size: 1.1rem;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+#pause-menu button:hover {
+  background: linear-gradient(90deg, #185a9d 0%, #43cea2 100%);
+  transform: scale(1.04);
+}
+
+/* Fade-in animation for screens */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+
+.main-menu, .leaderboard, .settings {
+  animation: fadeIn 0.7s cubic-bezier(.4,0,.2,1);
+}
+
+/* Button press animation */
+button:active {
+  transform: scale(0.97);
+  filter: brightness(0.96);
+}
+
+/* Highlight active button (for accessibility/focus) */
+button:focus {
+  outline: 2px solid #2193b0;
+  box-shadow: 0 0 0 2px #6dd5ed;
+}
+
+/* Placeholder for player name input */
+#player-name::placeholder {
+  color: #b0b0b0;
+  opacity: 1;
+} 
