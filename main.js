@@ -2,15 +2,70 @@ import { BubbleShooterGame } from './game/bubbleShooter.js';
 
 const app = document.getElementById('app');
 
+// Глобальна функція для збереження результатів в лідерборд
+function saveToLeaderboard(score, gameMode = 'endless') {
+  const playerName = localStorage.getItem('playerName') || 'Anonymous';
+  const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
+  
+  // Додаємо новий результат
+  const newResult = {
+    name: playerName,
+    score: score,
+    mode: gameMode || 'endless', // Забезпечуємо що режим завжди визначений
+    date: new Date().toISOString()
+  };
+  leaderboard.push(newResult);
+  
+  // Сортуємо за результатом (найкращі перші)
+  leaderboard.sort((a, b) => b.score - a.score);
+  
+  // Залишаємо тільки топ-10 результатів
+  const topResults = leaderboard.slice(0, 10);
+  
+  // Зберігаємо назад в localStorage
+  localStorage.setItem('bubbleLeaderboard', JSON.stringify(topResults));
+}
+
+// Експортуємо функцію для використання в грі
+window.saveToLeaderboard = saveToLeaderboard;
+
 function showMainMenu() {
   app.innerHTML = `
     <div class="main-menu">
-      <h1>Bubble Shooter</h1>
-      <button id="play-btn">Play</button>
-      <button id="leaderboard-btn">Leaderboard</button>
-      <button id="settings-btn">Settings</button>
+      <h1 style="animation: bounceIn 1s ease-out;">🎯 Irys Shooter</h1>
+      <button id="play-btn" style="animation: slideInLeft 0.6s ease-out 0.3s both;">🎮 Play</button>
+      <button id="leaderboard-btn" style="animation: slideInUp 0.6s ease-out 0.5s both;">🏆 Leaderboard</button>
+      <button id="settings-btn" style="animation: slideInRight 0.6s ease-out 0.7s both;">⚙️ Settings</button>
     </div>
   `;
+  
+  // Додаємо звукові ефекти для кнопок
+  const buttons = document.querySelectorAll('.main-menu button');
+  buttons.forEach(button => {
+    button.addEventListener('mouseenter', () => {
+      // Простий звук hover
+      if (window.AudioContext || window.webkitAudioContext) {
+        try {
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+          gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+          
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.15);
+        } catch (e) {
+          // Тихо ігноруємо помилки звуку
+        }
+      }
+    });
+  });
+  
   document.getElementById('play-btn').onclick = () => showGame();
   document.getElementById('leaderboard-btn').onclick = () => showLeaderboard();
   document.getElementById('settings-btn').onclick = () => showSettings();
@@ -25,24 +80,26 @@ function showGame() {
 function showLeaderboard() {
   const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
   let tableRows = leaderboard.map((entry, idx) => `
-    <tr>
-      <td>${idx + 1}</td>
-      <td>${entry.name}</td>
-      <td>${entry.score}</td>
+    <tr style="border-bottom:1px solid #e0e6ed;">
+      <td style="padding:12px 8px; text-align:center; font-weight:bold; color:#2193b0;">${idx + 1}</td>
+      <td style="padding:12px 16px; text-align:left; color:#333;">${entry.name}</td>
+      <td style="padding:12px 16px; text-align:center; font-weight:bold; color:#43cea2;">${entry.score}</td>
+      <td style="padding:12px 16px; text-align:center; color:#666;">${entry.mode === 'timed' ? '1min' : 'Endless'}</td>
     </tr>
   `).join('');
   if (!tableRows) {
-    tableRows = '<tr><td colspan="3" style="text-align:center;">No results yet</td></tr>';
+    tableRows = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#999; font-style:italic;">No results yet</td></tr>';
   }
   app.innerHTML = `
-    <div class="leaderboard" style="background:rgba(255,255,255,0.95); border-radius:18px; box-shadow:0 8px 32px rgba(0,0,0,0.12); padding:36px 24px; text-align:center; max-width:340px; margin:0 auto;">
-      <h2 style="font-size:2rem; color:#111; margin-bottom:24px; letter-spacing:1px;">Leaderboard</h2>
+    <div class="leaderboard" style="background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); border-radius:18px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); padding:36px 32px; text-align:center; max-width:580px; margin:0 auto;">
+      <h2 style="font-size:2rem; color:#111; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🏆 Leaderboard</h2>
       <table style="width:100%; border-collapse:collapse; margin:24px 0; font-size:1.1rem;">
         <thead>
           <tr style="background:#e3f6fd; color:#2193b0;">
-            <th style="padding:8px 0;">#</th>
-            <th style="padding:8px 0;">Name</th>
-            <th style="padding:8px 0;">Score</th>
+            <th style="padding:12px 8px; text-align:center;">#</th>
+            <th style="padding:12px 16px; text-align:left;">Name</th>
+            <th style="padding:12px 16px; text-align:center;">Score</th>
+            <th style="padding:12px 16px; text-align:center;">Mode</th>
           </tr>
         </thead>
         <tbody>
@@ -65,8 +122,8 @@ function showLeaderboard() {
 function showSettings() {
   const savedName = localStorage.getItem('playerName') || '';
   app.innerHTML = `
-    <div class="settings" style="background:rgba(255,255,255,0.93); border-radius:24px; box-shadow:0 8px 32px rgba(0,0,0,0.18); padding:48px 32px; text-align:center; max-width:340px; margin:0 auto;">
-      <h2 style="font-size:2rem; color:#2193b0; margin-bottom:24px; letter-spacing:1px;">Settings</h2>
+    <div class="settings" style="background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); border-radius:24px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); padding:48px 32px; text-align:center; max-width:340px; margin:0 auto;">
+      <h2 style="font-size:2rem; color:#2193b0; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">⚙️ Settings</h2>
       <form id="settings-form">
         <label for="player-name" style="font-size:1.1rem; color:#185a9d;">Player Name:</label><br>
         <input type="text" id="player-name" name="player-name" value="${savedName}" maxlength="16" placeholder="Enter your name" style="margin:18px 0 12px 0; padding:14px; border-radius:12px; border:1.5px solid #43cea2; width:220px; font-size:1.1rem; background:#f7fafc; box-shadow:0 2px 8px rgba(67,206,162,0.07); transition:border 0.2s;" required><br>

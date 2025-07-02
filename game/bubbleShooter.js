@@ -3,12 +3,11 @@ export class BubbleShooterGame {
     this.container = container;
     this.isPaused = false;
     this.score = 0;
-    this.level = 1;
-    this.rows = 9;
-    this.cols = 7;
-    this.bubbleRadius = 26;
+    this.rows = 11;
+    this.cols = 14;  // Зменшуємо кількість колонок для правильного відступу
+    this.bubbleRadius = 20;
     this.bubbleImages = {};
-    this.bubbleTypes = ['blue', 'red', 'yellow', 'kyan'];
+    this.bubbleTypes = ['blue', 'red', 'yellow', 'kyan', 'heart'];
     this.grid = [];
     this.shootingBubble = null;
     this.shootingAngle = Math.PI / 2;
@@ -17,8 +16,23 @@ export class BubbleShooterGame {
     this.particles = []; // Для ефекту частинок
     this.isGameOver = false;
     this.lastTime = 0;
+    this.gameMode = null; // 'endless' або 'timed'
+    this.timeLeft = 60; // для режиму на 1 хвилину
+    this.dropTimer = 9; // Таймер для опускання кульок
+    this.shooterY = 0; // Позиція стрільця по Y
+    
+    // Sound system
+    this.sounds = {};
+    this.soundEnabled = true;
+    this.audioContext = null;
+    
+    // Animation system
+    this.animationTime = 0;
+    this.menuAnimationOffset = 0;
+    
     this.loadImages().then(() => {
-      this.init();
+      this.initSounds();
+      this.showModeSelection();
     });
   }
 
@@ -38,42 +52,247 @@ export class BubbleShooterGame {
     });
   }
 
-  init() {
-    const gameWidth = 576;
-    const playAreaWidth = 480;
-    const gameHeight = 640;
-    const sidePadding = (gameWidth - playAreaWidth) / 2;
+  initSounds() {
+    try {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      this.loadSounds();
+    } catch (e) {
+      console.warn('Audio not supported');
+      this.soundEnabled = false;
+    }
+  }
+
+  async loadSounds() {
+    const soundFiles = ['shoot', 'pop', 'menu', 'game-over', 'start'];
     
+    for (const soundName of soundFiles) {
+      try {
+        const audio = new Audio();
+        audio.preload = 'auto';
+        audio.volume = 0.3;
+        // Fallback to generated sounds via Web Audio API
+        this.sounds[soundName] = audio;
+      } catch (e) {
+        console.warn(`Could not load sound: ${soundName}`);
+      }
+    }
+  }
+
+  playSound(soundName) {
+    if (!this.soundEnabled) return;
+    
+    if (soundName === 'shoot') {
+      this.generateAndPlayTone(800, 400, 0.2, 0.3, 'exponential');
+    } else if (soundName === 'pop') {
+      this.generateAndPlayTone(200, 1000, 0.3, 0.4, 'linear');
+    } else if (soundName === 'menu') {
+      this.generateAndPlayTone(600, 200, 0.15, 0.2, 'exponential');
+    } else if (soundName === 'game-over') {
+      this.generateAndPlayTone(400, -300, 1.0, 0.3, 'exponential');
+    } else if (soundName === 'start') {
+      this.generateAndPlayTone(300, 500, 0.8, 0.4, 'exponential');
+    }
+  }
+
+  generateAndPlayTone(startFreq, freqChange, duration, volume, curve = 'exponential') {
+    if (!this.audioContext) return;
+    
+    try {
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(startFreq, this.audioContext.currentTime);
+      if (curve === 'exponential') {
+        oscillator.frequency.exponentialRampToValueAtTime(
+          startFreq + freqChange, 
+          this.audioContext.currentTime + duration
+        );
+      } else {
+        oscillator.frequency.linearRampToValueAtTime(
+          startFreq + freqChange, 
+          this.audioContext.currentTime + duration
+        );
+      }
+      
+      gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+      
+      oscillator.start(this.audioContext.currentTime);
+      oscillator.stop(this.audioContext.currentTime + duration);
+    } catch (e) {
+      console.warn('Could not play sound');
+    }
+  }
+
+  showModeSelection() {
     this.container.innerHTML = `
-      <div class="game-header" style="background:rgba(255,255,255,0.93); border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.10); padding:18px 24px 14px 24px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; width:${gameWidth}px; margin-left:auto; margin-right:auto;">
-        <div style="display:flex; gap:16px; align-items:center;">
-          <span id="score" class="score-badge" style="display:inline-block; min-width:110px; padding:10px 22px; font-size:1.15rem; border-radius:12px; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; letter-spacing:1px; box-shadow:0 2px 8px rgba(67,206,162,0.10);">Score: 0</span>
-          <span id="level" style="display:inline-block; padding:10px 22px; font-size:1.15rem; border-radius:12px; background:linear-gradient(90deg,#FF6B6B 0%,#FF8E53 100%); color:#fff; font-weight:bold; letter-spacing:1px; box-shadow:0 2px 8px rgba(255,107,107,0.10);">Level: 1</span>
+      <div id="mode-selection" style="background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:32px; text-align:center; width:400px; margin:0 auto; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); animation: slideInUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
+        <h2 id="mode-title" style="margin:0 0 24px 0; color:#333; font-size:2rem; font-weight:bold; animation: bounceIn 1s ease-out 0.3s both; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🎮 Select game mode</h2>
+        <div style="display:flex; gap:12px; justify-content:center;">
+          <button id="endless-mode" style="flex:1; padding:12px; font-size:1.1rem; border-radius:8px; border:none; background:#43cea2; color:#fff; font-weight:bold; cursor:pointer; transition:all 0.3s; animation: slideInLeft 0.6s ease-out 0.5s both;">
+            🎯 Endless mode
+          </button>
+          <button id="timed-mode" style="flex:1; padding:12px; font-size:1.1rem; border-radius:8px; border:none; background:#4096ee; color:#fff; font-weight:bold; cursor:pointer; transition:all 0.3s; animation: slideInUp 0.6s ease-out 0.7s both;">
+            ⏱️ 1 minute
+          </button>
+          <button id="back-to-menu" style="flex:1; padding:12px; font-size:1.1rem; border-radius:8px; border:none; background:#e74c3c; color:#fff; font-weight:bold; cursor:pointer; transition:all 0.3s; animation: slideInRight 0.6s ease-out 0.9s both;">
+            🏠 Back
+          </button>
         </div>
-        <button id="pause-btn" class="pause-btn" style="padding:10px 28px; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; box-shadow:0 2px 8px rgba(67,206,162,0.10); transition:background 0.2s,transform 0.2s;">Pause</button>
-      </div>
-      <div style="position:relative; width:${gameWidth}px; margin:0 auto;">
-        <canvas id="game-canvas" width="${gameWidth}" height="${gameHeight}"></canvas>
-        <div id="pause-menu" class="hidden">
-          <h2>Paused</h2>
-          <button id="resume-btn">Resume</button>
-          <button id="exit-btn">Exit</button>
-        </div>
-        <div id="level-complete" class="hidden" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(255,255,255,0.95); padding:30px; border-radius:20px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.15);">
-          <h2 style="margin:0 0 20px 0; color:#2C3E50;">Level Complete!</h2>
-          <p style="margin:0 0 25px 0; color:#7F8C8D;">Score: <span id="level-score">0</span></p>
-          <button id="next-level-btn" style="padding:12px 30px; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer;">Next Level</button>
+        <div id="floating-bubbles" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:hidden; border-radius:20px;">
         </div>
       </div>
     `;
+
+    // Додаємо hover ефекти та звуки
+    const buttons = this.container.querySelectorAll('button');
+    buttons.forEach(button => {
+      button.onmouseover = () => {
+        this.playSound('menu');
+        button.style.transform = 'scale(1.05) translateY(-2px)';
+        button.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)';
+      };
+      button.onmouseout = () => {
+        button.style.transform = 'scale(1) translateY(0)';
+        button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+      };
+    });
+
+    this.container.querySelector('#endless-mode').onclick = () => {
+      this.playSound('start');
+      this.animateStartTransition(() => {
+        this.gameMode = 'endless';
+        this.init();
+      });
+    };
+    
+    this.container.querySelector('#timed-mode').onclick = () => {
+      this.playSound('start');
+      this.animateStartTransition(() => {
+        this.gameMode = 'timed';
+        this.timeLeft = 60;
+        this.init();
+      });
+    };
+
+    this.container.querySelector('#back-to-menu').onclick = () => {
+      this.playSound('menu');
+      if (typeof window.showMainMenu === 'function') {
+        window.showMainMenu();
+      }
+    };
+
+    // Додаємо анімацію плаваючих кульок
+    this.startFloatingBubblesAnimation();
+  }
+
+  animateStartTransition(callback) {
+    const modeSelection = this.container.querySelector('#mode-selection');
+    if (modeSelection) {
+      modeSelection.style.animation = 'zoomOut 0.5s ease-in forwards';
+      setTimeout(callback, 500);
+    } else {
+      callback();
+    }
+  }
+
+  startFloatingBubblesAnimation() {
+    const floatingContainer = this.container.querySelector('#floating-bubbles');
+    if (!floatingContainer) return;
+
+    // Створюємо 5 плаваючих кульок
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => {
+        this.createFloatingBubble(floatingContainer);
+      }, i * 800);
+    }
+
+    // Періодично додаємо нові кульки
+    setInterval(() => {
+      if (this.container.querySelector('#floating-bubbles')) {
+        this.createFloatingBubble(floatingContainer);
+      }
+    }, 3000);
+  }
+
+  createFloatingBubble(container) {
+    const colors = ['#43cea2', '#4096ee', '#e74c3c', '#f39c12', '#9b59b6'];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const size = 20 + Math.random() * 20;
+    const startX = Math.random() * 100;
+    const duration = 8 + Math.random() * 4;
+    
+    const bubble = document.createElement('div');
+    bubble.style.cssText = `
+      position: absolute;
+      width: ${size}px;
+      height: ${size}px;
+      background: radial-gradient(circle at 30% 30%, ${color}aa, ${color});
+      border-radius: 50%;
+      left: ${startX}%;
+      bottom: -50px;
+      animation: floatUp ${duration}s linear forwards;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border: 2px solid rgba(255,255,255,0.3);
+    `;
+    
+    container.appendChild(bubble);
+    
+    // Видаляємо кульку після анімації
+    setTimeout(() => {
+      if (bubble.parentNode) {
+        bubble.parentNode.removeChild(bubble);
+      }
+    }, duration * 1000);
+  }
+
+  init() {
+    const gameWidth = 620;
+    const playAreaWidth = 600;
+    const gameHeight = 600;
+    const totalBubblesWidth = this.cols * this.bubbleRadius * 2;
+    const sidePadding = (gameWidth - totalBubblesWidth) / 2;
+    
+    this.container.innerHTML = `
+      <div style="width:${gameWidth}px; margin:0 auto;">
+        <div class="game-header" style="background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); padding:12px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; gap:12px; align-items:center;">
+            <span id="score" class="score-badge" style="display:inline-block; padding:8px 16px; font-size:1.1rem; border-radius:8px; background:#43cea2; color:#fff; font-weight:bold;">Score: 0</span>
+            ${this.gameMode === 'timed' ? `<span id="timer" style="display:inline-block; padding:8px 16px; font-size:1.1rem; border-radius:8px; background:#FF6B6B; color:#fff; font-weight:bold;">Time: 60s</span>` : ''}
+          </div>
+          <button id="pause-btn" class="pause-btn" style="padding:8px 16px; font-size:1.1rem; border-radius:8px; border:none; background:#43cea2; color:#fff; font-weight:bold; cursor:pointer;">Pause</button>
+        </div>
+        <div style="position:relative;">
+          <canvas id="game-canvas" width="${gameWidth}" height="${gameHeight}" style="background:#666; border-radius:12px;"></canvas>
+          <div id="pause-menu" class="hidden">
+            <h2>Paused</h2>
+            <button id="resume-btn">Resume</button>
+            <button id="exit-btn" style="background:#e74c3c; color:#fff;">🚪 Exit</button>
+          </div>
+          <div id="game-over" class="hidden" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); padding:30px; border-radius:20px; text-align:center; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);">
+            <h2 style="margin:0 0 20px 0; color:#2C3E50;">Game Over!</h2>
+            <p style="margin:0 0 25px 0; color:#7F8C8D;">Final Score: <span id="final-score">0</span></p>
+            <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+              <button id="play-again-btn" style="padding:12px 30px; font-size:1.1rem; border-radius:12px; border:none; background:#43cea2; color:#fff; font-weight:bold; cursor:pointer; width:160px;">Play Again</button>
+              <button id="back-to-menu-btn" style="padding:12px 30px; font-size:1.1rem; border-radius:12px; border:none; background:#e74c3c; color:#fff; font-weight:bold; cursor:pointer; width:160px;">Back to Menu</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
     this.canvas = this.container.querySelector('#game-canvas');
     this.ctx = this.canvas.getContext('2d');
     this.pauseMenu = this.container.querySelector('#pause-menu');
-    this.levelCompleteMenu = this.container.querySelector('#level-complete');
+    this.gameOverMenu = this.container.querySelector('#game-over');
     this.scoreEl = this.container.querySelector('#score');
-    this.levelEl = this.container.querySelector('#level');
+    this.timerEl = this.gameMode === 'timed' ? this.container.querySelector('#timer') : null;
     this.playAreaWidth = playAreaWidth;
     this.sidePadding = sidePadding;
+    this.shooterY = gameHeight - this.bubbleRadius * 1.5; // Опускаємо стрілець трохи нижче
     this.addEventListeners();
     this.createGrid();
     this.spawnShootingBubble();
@@ -84,22 +303,45 @@ export class BubbleShooterGame {
     this.container.querySelector('#pause-btn').onclick = () => this.pauseGame();
     this.container.querySelector('#resume-btn').onclick = () => this.resumeGame();
     this.container.querySelector('#exit-btn').onclick = () => this.exitGame();
-    this.container.querySelector('#next-level-btn').onclick = () => this.startNextLevel();
+    this.container.querySelector('#play-again-btn').onclick = () => this.showModeSelection();
+    this.container.querySelector('#back-to-menu-btn').onclick = () => this.exitGame();
     this.canvas.addEventListener('mousemove', (e) => this.aim(e));
     this.canvas.addEventListener('click', (e) => this.shoot(e));
   }
 
   createGrid() {
     this.grid = [];
-    const patterns = this.getLevelPattern(this.level);
-    
     for (let row = 0; row < this.rows; row++) {
       const arr = [];
       for (let col = 0; col < this.cols; col++) {
-        if (patterns[row] && patterns[row][col]) {
-          const type = patterns[row][col] === 'R' ? 
-            this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)] : 
-            patterns[row][col].toLowerCase();
+        if (row < 7) {
+          // Перевіряємо колір зліва та зверху для уникнення занадто простих комбінацій
+          let availableColors = [...this.bubbleTypes];
+          
+          // Перевіряємо колір зліва
+          if (col > 0 && arr[col - 1]) {
+            const leftColor = arr[col - 1].type;
+            // 70% шанс уникнути такого ж кольору
+            if (Math.random() < 0.7) {
+              availableColors = availableColors.filter(color => color !== leftColor);
+            }
+          }
+          
+          // Перевіряємо колір зверху
+          if (row > 0 && this.grid[row - 1][col]) {
+            const topColor = this.grid[row - 1][col].type;
+            // 70% шанс уникнути такого ж кольору
+            if (Math.random() < 0.7) {
+              availableColors = availableColors.filter(color => color !== topColor);
+            }
+          }
+          
+          // Якщо не залишилось доступних кольорів, використовуємо всі
+          if (availableColors.length === 0) {
+            availableColors = [...this.bubbleTypes];
+          }
+          
+          const type = availableColors[Math.floor(Math.random() * availableColors.length)];
           arr.push({
             type,
             row,
@@ -111,41 +353,6 @@ export class BubbleShooterGame {
       }
       this.grid.push(arr);
     }
-  }
-
-  getLevelPattern(level) {
-    // Патерни для різних рівнів (R = випадковий колір)
-    const patterns = {
-      1: [
-        'RRRRRR',
-        'RRRRRR',
-        'RRRRRR',
-        'RRRRRR'
-      ],
-      2: [
-        'RRRRRRRR',
-        'RRRRRRRR',
-        'RRRRRRRR',
-        'RRRRRRRR',
-        'RRRRRRRR'
-      ],
-      3: [
-        'redredred',
-        'blueblueb',
-        'yellowyel',
-        'kyankyan',
-        'redredred'
-      ],
-      4: [
-        'RRRRRRRR',
-        'RRRRRRRR',
-        'RRRRRRRR',
-        'RRRRRRRR',
-        'RRRRRRRR',
-        'RRRRRRRR'
-      ]
-    };
-    return patterns[level] || patterns[1];
   }
 
   createParticles(x, y, color, count = 10) {
@@ -187,18 +394,13 @@ export class BubbleShooterGame {
   spawnShootingBubble() {
     const type = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
     this.shootingBubble = {
-      x: this.canvas.width / 2,
-      y: this.canvas.height - this.bubbleRadius - 10, // Повертаємо попередній відступ знизу
       type,
+      x: this.canvas.width / 2,
+      y: this.shooterY,
       dx: 0,
       dy: 0,
       moving: false
     };
-    this.shootingAngle = -Math.PI / 2;
-    this.aim({
-      clientX: this.canvas.getBoundingClientRect().left + this.canvas.width / 2,
-      clientY: this.canvas.getBoundingClientRect().top + 40
-    });
   }
 
   aim(e) {
@@ -223,7 +425,8 @@ export class BubbleShooterGame {
   shoot(e) {
     if (this.shootingBubble.moving) return;
     
-    const BUBBLE_SPEED = 720;
+    this.playSound('shoot');
+    const BUBBLE_SPEED = 600;
     // Shoot in the direction of aim, but invert Y velocity for upward motion
     this.shootingBubble.dx = Math.cos(this.shootingAngle) * BUBBLE_SPEED;
     this.shootingBubble.dy = -Math.sin(Math.abs(this.shootingAngle)) * BUBBLE_SPEED;
@@ -235,6 +438,11 @@ export class BubbleShooterGame {
     this.score = 0;
     this.isGameOver = false;
     this.lastTime = 0;
+    if (this.gameMode === 'timed') {
+      this.timeLeft = 60;
+      this.dropTimer = 9; // Таймер для опускання кульок
+      this.updateTimer();
+    }
     this.updateScore();
     requestAnimationFrame((time) => this.loop(time));
   }
@@ -245,11 +453,27 @@ export class BubbleShooterGame {
     if (!this.lastTime) this.lastTime = currentTime;
     const deltaTime = (currentTime - this.lastTime) / 1000;
     this.lastTime = currentTime;
+
+    if (this.gameMode === 'timed') {
+      this.timeLeft -= deltaTime;
+      this.dropTimer -= deltaTime;
+      this.updateTimer();
+      
+      // Опускаємо кульки кожні 9 секунд
+      if (this.dropTimer <= 0) {
+        this.dropBubblesOneRow();
+        this.dropTimer = 9; // Скидаємо таймер
+      }
+      
+      if (this.timeLeft <= 0) {
+        this.gameOver();
+        return;
+      }
+    }
     
     if (this.explodingBubbles.length > 0) {
       for (const b of this.explodingBubbles) {
         b.progress += 0.08;
-        // Створюємо частинки при вибуху
         if (b.progress < 0.1) {
           const {x, y} = this.gridToPixel(b.row, b.col);
           this.createParticles(x, y, b.type, 8);
@@ -260,18 +484,6 @@ export class BubbleShooterGame {
           this.grid[b.row][b.col] = null;
         }
         this.explodingBubbles = [];
-        
-        // Перевіряємо чи рівень пройдено
-        let remainingBubbles = 0;
-        for (let row = 0; row < this.rows; row++) {
-          for (let col = 0; col < this.cols; col++) {
-            if (this.grid[row][col]) remainingBubbles++;
-          }
-        }
-        if (remainingBubbles === 0) {
-          this.levelComplete();
-          return;
-        }
       }
     }
     
@@ -282,6 +494,13 @@ export class BubbleShooterGame {
     this.updateShootingBubble(deltaTime);
     this.updateParticles(deltaTime);
     requestAnimationFrame((time) => this.loop(time));
+  }
+
+  updateTimer() {
+    if (this.timerEl) {
+      const seconds = Math.max(0, Math.ceil(this.timeLeft));
+      this.timerEl.textContent = `Time: ${seconds}s`;
+    }
   }
 
   drawGrid() {
@@ -407,16 +626,17 @@ export class BubbleShooterGame {
   }
 
   gridToPixel(row, col) {
-    const xOffset = (row % 2) * this.bubbleRadius;
-    // Center the grid with proper spacing
-    const gridWidth = this.cols * (this.bubbleRadius * 2 + 6);
-    const padding = (this.playAreaWidth - gridWidth) / 2 + this.sidePadding;
-    
-    // Add more horizontal spacing between bubbles
-    const x = col * (this.bubbleRadius * 2 + 6) + this.bubbleRadius + xOffset + padding;
-    // Add more vertical spacing between rows
-    const y = row * (this.bubbleRadius * 1.85) + this.bubbleRadius + 20; // Повертаємо попередній відступ зверху
+    const evenRow = row % 2 === 0;
+    const x = this.sidePadding + (evenRow ? 0 : this.bubbleRadius) + col * this.bubbleRadius * 2;
+    const y = row * this.bubbleRadius * 1.8 + this.bubbleRadius;
     return { x, y };
+  }
+
+  pixelToGrid(x, y) {
+    const row = Math.floor((y - this.bubbleRadius) / (this.bubbleRadius * 1.8));
+    const evenRow = row % 2 === 0;
+    const col = Math.floor((x - this.sidePadding - (evenRow ? 0 : this.bubbleRadius)) / (this.bubbleRadius * 2));
+    return { row, col };
   }
 
   drawShootingBubble() {
@@ -428,26 +648,14 @@ export class BubbleShooterGame {
       this.ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
       this.ctx.shadowBlur = 16;
       this.ctx.globalAlpha = 0.96;
-      this.ctx.translate(this.shootingBubble.x, this.shootingBubble.y);
-      this.ctx.scale(1.15, 1.15);
-      
-      const img = this.bubbleImages[this.shootingBubble.type];
-      if (img) {
-        this.ctx.drawImage(
-          img,
-          -this.bubbleRadius * 1.1,
-          -this.bubbleRadius * 1.1,
-          this.bubbleRadius * 2.2,
-          this.bubbleRadius * 2.2
-        );
-      }
-    } else {
-      this.drawBubble(
-        this.shootingBubble.x,
-        this.shootingBubble.y,
-        this.shootingBubble.type
-      );
     }
+    
+    this.drawBubble(
+      this.shootingBubble.x,
+      this.shootingBubble.y,
+      this.shootingBubble.type
+    );
+    
     this.ctx.restore();
   }
 
@@ -478,7 +686,7 @@ export class BubbleShooterGame {
     // Store previous position
     const prevX = this.shootingBubble.x;
     const prevY = this.shootingBubble.y;
-    
+
     // Move the bubble using deltaTime
     this.shootingBubble.x += this.shootingBubble.dx * deltaTime;
     this.shootingBubble.y += this.shootingBubble.dy * deltaTime;
@@ -496,10 +704,17 @@ export class BubbleShooterGame {
       this.shootingBubble.dx *= -1;
     }
 
-    // Check ceiling collision
+    // Check if bubble hit the top edge
     if (this.shootingBubble.y <= this.bubbleRadius) {
       const col = Math.round((this.shootingBubble.x - this.bubbleRadius - padding) / (this.bubbleRadius * 2));
-      this.attachBubbleToGrid(0, col);
+      
+      // Перевіряємо чи є місце в верхньому ряду
+      if (col >= 0 && col < this.cols && !this.grid[0][col]) {
+        this.attachBubbleToGrid(0, col);
+      } else {
+        // Якщо немає місця в верхньому ряду - програш
+        this.gameOver();
+      }
       return;
     }
 
@@ -523,13 +738,21 @@ export class BubbleShooterGame {
               {row: row - 1, col: col}
             ];
 
+            let foundValidPosition = false;
             for (const pos of possiblePositions) {
               if (pos.row >= 0 && pos.row < this.rows && 
                   pos.col >= 0 && pos.col < this.cols && 
                   !this.grid[pos.row][pos.col]) {
                 this.attachBubbleToGrid(pos.row, pos.col);
+                foundValidPosition = true;
                 return;
               }
+            }
+            
+            // Якщо не знайдено жодної валідної позиції - програш
+            if (!foundValidPosition) {
+              this.gameOver();
+              return;
             }
           }
         }
@@ -544,6 +767,15 @@ export class BubbleShooterGame {
 
   attachBubbleToGrid(hitRow, hitCol) {
     if (hitRow >= 0 && hitRow < this.rows && hitCol >= 0 && hitCol < this.cols) {
+      // Дозволяємо кулькам опускатися майже до стрільця
+      // Залишаємо мінімальну відстань між останніми кульками і стрільцем
+      const {y} = this.gridToPixel(hitRow, hitCol);
+      const minDistanceToShooter = this.bubbleRadius * 0.2; // Дуже мала відстань до стрільця
+      if (y + this.bubbleRadius >= this.shooterY - minDistanceToShooter) {
+        this.gameOver();
+        return;
+      }
+
       this.grid[hitRow][hitCol] = {
         type: this.shootingBubble.type,
         row: hitRow,
@@ -552,6 +784,7 @@ export class BubbleShooterGame {
       
       const matches = this.findAndRemoveGroups(hitRow, hitCol);
       if (matches.length >= 3) {
+        this.playSound('pop');
         let points = 0;
         if (matches.length === 3) points = 30;
         else if (matches.length === 4) points = 50;
@@ -559,6 +792,11 @@ export class BubbleShooterGame {
         
         this.score += points;
         this.updateScore();
+        
+        // Додаємо рандомний ефект вибуху
+        matches.forEach(match => {
+          match.explosionDelay = Math.random() * 0.2;
+        });
         
         this.explodingBubbles = matches;
         this.checkFloatingBubbles();
@@ -674,22 +912,18 @@ export class BubbleShooterGame {
   }
 
   gameOver() {
-    if (this.isGameOver) return;
     this.isGameOver = true;
-    // Зберігаємо результат у localStorage лише якщо score > 0
-    if (this.score > 0) {
-      const playerName = localStorage.getItem('playerName') || 'Anonymous';
-      const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
-      leaderboard.push({
-        name: playerName,
-        score: this.score
-      });
-      // Зберігаємо лише топ-20 результатів
-      leaderboard.sort((a, b) => b.score - a.score);
-      localStorage.setItem('bubbleLeaderboard', JSON.stringify(leaderboard.slice(0, 20)));
+    this.playSound('game-over');
+    
+    // Зберігаємо результат в лідерборд з інформацією про режим
+    if (typeof window.saveToLeaderboard === 'function') {
+      window.saveToLeaderboard(this.score, this.gameMode);
     }
-    alert('Game Over!');
-    if (typeof window.showMainMenu === 'function') window.showMainMenu();
+    
+    // Анімація появи меню game over
+    this.gameOverMenu.classList.remove('hidden');
+    this.gameOverMenu.style.animation = 'bounceIn 0.8s ease-out';
+    this.gameOverMenu.querySelector('#final-score').textContent = this.score;
   }
 
   pauseGame() {
@@ -711,17 +945,70 @@ export class BubbleShooterGame {
     this.scoreEl.textContent = `Score: ${this.score}`;
   }
 
-  levelComplete() {
-    this.levelCompleteMenu.classList.remove('hidden');
-    this.levelCompleteMenu.querySelector('#level-score').textContent = this.score;
-    this.level++;
+  // Функція для опускання всіх кульок на один ряд вниз
+  dropBubblesOneRow() {
+    // СПОЧАТКУ перевіряємо чи можуть ВСІ кульки безпечно опуститися на один рівень
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        if (this.grid[row][col]) {
+          // Обчислюємо де буде кулька після опускання на один рівень
+          const newRow = row + 1;
+          if (newRow < this.rows) {
+            const {y} = this.gridToPixel(newRow, col);
+            const minDistanceToShooter = this.bubbleRadius * 0.2;
+            // Якщо кулька після опускання досягне критичного рівня - програш
+            if (y + this.bubbleRadius >= this.shooterY - minDistanceToShooter) {
+              this.gameOver();
+              return; // Виходимо без опускання кульок
+            }
+          }
+        }
+      }
+    }
+
+    // Якщо перевірка пройшла успішно - опускаємо ВСІ кульки на один рівень
+    const lastRow = this.rows - 1;
+    
+    // Опускаємо всі кульки на один ряд вниз
+    for (let row = lastRow; row > 0; row--) {
+      for (let col = 0; col < this.cols; col++) {
+        this.grid[row][col] = this.grid[row - 1][col];
+        if (this.grid[row][col]) {
+          this.grid[row][col].row = row;
+        }
+      }
+    }
+
+    // Очищаємо перший ряд
+    for (let col = 0; col < this.cols; col++) {
+      this.grid[0][col] = null;
+    }
+
+    // Створюємо новий ряд кульок зверху (тепер це безпечно)
+    for (let col = 0; col < this.cols; col++) {
+      const type = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
+      this.grid[0][col] = {
+        type,
+        row: 0,
+        col
+      };
+    }
   }
 
-  startNextLevel() {
-    this.levelCompleteMenu.classList.add('hidden');
-    this.createGrid();
-    this.spawnShootingBubble();
-    this.levelEl.textContent = `Level: ${this.level}`;
-    this.loop(performance.now());
+  // Нова функція для перевірки завершення гри
+  checkGameOver() {
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        if (this.grid[row][col]) {
+          const {y} = this.gridToPixel(row, col);
+          const minDistanceToShooter = this.bubbleRadius * 0.2;
+          if (y + this.bubbleRadius >= this.shooterY - minDistanceToShooter) {
+            this.gameOver();
+            return true; // Повертаємо true якщо гра закінчена
+          }
+        }
+      }
+    }
+    return false; // Гра продовжується
   }
 } 

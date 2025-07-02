@@ -2,11 +2,42 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background: linear-gradient(135deg, #6dd5ed 0%, #2193b0 100%);
+  background: 
+    url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIHZpZXdCb3g9IjAgMCAxMjAwIDgwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ic2t5R3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzJEOEVCRiIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iNzAlIiBzdG9wLWNvbG9yPSIjNEZBMkRFIiBzdG9wLW9wYWNpdHk9IjEiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjQzlFRkZGIiBzdG9wLW9wYWNpdHk9IjEiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImNsb3VkR3JhZGllbnQiIGN4PSI1MCUiIGN5PSI0MCUiIHI9IjYwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNGRkZGRkYiIHN0b3Atb3BhY2l0eT0iMC45NSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjcwJSIgc3RvcC1jb2xvcj0iI0U2RjNGRiIgc3RvcC1vcGFjaXR5PSIwLjkiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjQ0NFQUZGIiBzdG9wLW9wYWNpdHk9IjAuNyIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICA8L2RlZnM+CiAgCiAgPCEtLSBTa3kgYmFja2dyb3VuZCAtLT4KICA8cmVjdCB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIGZpbGw9InVybCgjc2t5R3JhZGllbnQpIi8+CiAgCiAgPCEtLSBMYXJnZSBjbG91ZHMgLS0+CiAgPGVsbGlwc2UgY3g9IjIwMCIgY3k9IjE1MCIgcng9IjEyMCIgcnk9IjYwIiBmaWxsPSJ1cmwoI2Nsb3VkR3JhZGllbnQpIiB0cmFuc2Zvcm09InJvdGF0ZSgtNSAyMDAgMTUwKSIvPgogIDxlbGxpcHNlIGN4PSIxODAiIGN5PSIxMzAiIHJ4PSI4MCIgcnk9IjQwIiBmaWxsPSJ1cmwoI2Nsb3VkR3JhZGllbnQpIiB0cmFuc2Zvcm09InJvdGF0ZSgxMCAxODAgMTMwKSIvPgogIDxlbGxpcHNlIGN4PSIyNDAiIGN5PSIxNDAiIHJ4PSI5MCIgcnk9IjQ1IiBmaWxsPSJ1cmwoI2Nsb3VkR3JhZGllbnQpIi8+CiAgCiAgPCEtLSBNaWQtc2l6ZSBjbG91ZCAtLT4KICA8ZWxsaXBzZSBjeD0iNTAwIiBjeT0iMTAwIiByeD0iMTAwIiByeT0iNTAiIGZpbGw9InVybCgjY2xvdWRHcmFkaWVudCkiLz4KICA8ZWxsaXBzZSBjeD0iNDgwIiBjeT0iODAiIHJ4PSI3MCIgcnk9IjM1IiBmaWxsPSJ1cmwoI2Nsb3VkR3JhZGllbnQpIi8+CiAgPGVsbGlwc2UgY3g9IjUzMCIgY3k9IjkwIiByeD0iODAiIHJ5PSI0MCIgZmlsbD0idXJsKCNjbG91ZEdyYWRpZW50KSIvPgogIAogIDwhLS0gUmlnaHQgc2lkZSBjbG91ZHMgLS0+CiAgPGVsbGlwc2UgY3g9IjkwMCIgY3k9IjE4MCIgcng9IjE0MCIgcnk9IjcwIiBmaWxsPSJ1cmwoI2Nsb3VkR3JhZGllbnQpIiB0cmFuc2Zvcm09InJvdGF0ZSg4IDkwMCAxODApIi8+CiAgPGVsbGlwc2UgY3g9Ijg3MCIgY3k9IjE2MCIgcng9IjkwIiByeT0iNDUiIGZpbGw9InVybCgjY2xvdWRHcmFkaWVudCkiLz4KICA8ZWxsaXBzZSBjeD0iOTQwIiBjeT0iMTcwIiByeD0iMTAwIiByeT0iNTAiIGZpbGw9InVybCgjY2xvdWRHcmFkaWVudCkiLz4KICAKICA8IS0tIFNtYWxsIGNsb3VkcyAtLT4KICA8ZWxsaXBzZSBjeD0iMzUwIiBjeT0iMjAwIiByeD0iNTAiIHJ5PSIyNSIgZmlsbD0idXJsKCNjbG91ZEdyYWRpZW50KSIvPgogIDxlbGxpcHNlIGN4PSI3MDAiIGN5PSIyNDAiIHJ4PSI2MCIgcnk9IjMwIiBmaWxsPSJ1cmwoI2Nsb3VkR3JhZGllbnQpIi8+CiAgPGVsbGlwc2UgY3g9IjEwNTAiIGN5PSIzMDAiIHJ4PSI0MCIgcnk9IjIwIiBmaWxsPSJ1cmwoI2Nsb3VkR3JhZGllbnQpIi8+CiAgPGVsbGlwc2UgY3g9IjE1MCIgY3k9IjMyMCIgcng9IjQ1IiByeT0iMjIiIGZpbGw9InVybCgjY2xvdWRHcmFkaWVudCkiLz4KICA8ZWxsaXBzZSBjeD0iODUwIiBjeT0iMzUwIiByeD0iNTUiIHJ5PSIyOCIgZmlsbD0idXJsKCNjbG91ZEdyYWRpZW50KSIvPgogIAogIDwhLS0gVGlueSBjbG91ZHMgLS0+CiAgPGVsbGlwc2UgY3g9IjQ1MCIgY3k9IjM4MCIgcng9IjMwIiByeT0iMTUiIGZpbGw9InVybCgjY2xvdWRHcmFkaWVudCkiLz4KICA8ZWxsaXBzZSBjeD0iNjAwIiBjeT0iNDIwIiByeD0iMzUiIHJ5PSIxOCIgZmlsbD0idXJsKCNjbG91ZEdyYWRpZW50KSIvPgogIDxlbGxpcHNlIGN4PSIzMDAiIGN5PSI0NDAiIHJ4PSIyNSIgcnk9IjEyIiBmaWxsPSJ1cmwoI2Nsb3VkR3JhZGllbnQpIi8+CiAgPGVsbGlwc2UgY3g9Ijk1MCIgY3k9IjQ2MCIgcng9IjQwIiByeT0iMjAiIGZpbGw9InVybCgjY2xvdWRHcmFkaWVudCkiLz4KICAKICA8IS0tIERpc3RhbnQgaG9yaXpvbiBsaW5lIC0tPgogIDxyZWN0IHg9IjAiIHk9IjcwMCIgd2lkdGg9IjEyMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRURGNUZGIiBvcGFjaXR5PSIwLjMiLz4KPC9zdmc+Cg==');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   font-family: 'Segoe UI', Arial, sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.4) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIxIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiLz4KICA8Y2lyY2xlIGN4PSI1IiBjeT0iNSIgcj0iMC41IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+CiAgPGNpcmNsZSBjeD0iMzUiIGN5PSIzNSIgcj0iMC41IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+Cjwvc3ZnPg==');
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
 }
 
 #app {
@@ -18,11 +49,37 @@ body {
 }
 
 .main-menu {
-  background: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.2);
   border-radius: 24px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.3), 
+              0 8px 24px rgba(0,0,0,0.2),
+              inset 0 1px 0 rgba(255,255,255,0.4);
   padding: 48px 32px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.main-menu::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, 
+              rgba(255,255,255,0.1) 0%, 
+              rgba(255,255,255,0.05) 50%, 
+              rgba(255,255,255,0.1) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.main-menu > * {
+  position: relative;
+  z-index: 1;
 }
 
 .main-menu h1 {
@@ -67,45 +124,71 @@ body {
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 20px;
+}
+
+.hidden {
+  display: none !important;
+}
+
 #pause-menu {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(255,255,255,0.98);
-  border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  padding: 36px 32px;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 30px;
+  border-radius: 20px;
   text-align: center;
-  z-index: 10;
-}
-
-#pause-menu.hidden {
-  display: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 #pause-menu h2 {
-  margin-bottom: 24px;
-  color: #2193b0;
+  margin: 0 0 20px 0;
+  color: #2C3E50;
 }
 
 #pause-menu button {
-  margin: 12px 0;
-  width: 160px;
-  padding: 12px 0;
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
   font-size: 1.1rem;
-  border-radius: 10px;
+  border-radius: 12px;
   border: none;
   background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
   color: #fff;
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  transition: transform 0.2s;
 }
 
 #pause-menu button:hover {
-  background: linear-gradient(90deg, #185a9d 0%, #43cea2 100%);
-  transform: scale(1.04);
+  transform: scale(1.05);
+}
+
+#pause-menu #exit-btn:hover {
+  background: #c0392b !important;
+  transform: scale(1.05);
+}
+
+.pause-btn:hover {
+  transform: scale(1.05);
+}
+
+.score-badge {
+  transition: transform 0.2s;
+}
+
+.score-badge:hover {
+  transform: scale(1.05);
 }
 
 /* Fade-in animation for screens */
@@ -134,4 +217,140 @@ button:focus {
 #player-name::placeholder {
   color: #b0b0b0;
   opacity: 1;
+}
+
+/* Додаткові анімації для гри */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes zoomOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@keyframes floatUp {
+  from {
+    bottom: -50px;
+    opacity: 0.8;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  to {
+    bottom: calc(100% + 50px);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-10px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(10px);
+  }
+}
+
+/* Анімація для кульок що вибухають */
+@keyframes explode {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+/* Ефект для пурханок */
+@keyframes sparkle {
+  0% {
+    opacity: 1;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0) rotate(360deg);
+  }
 } 

@@ -3,6 +3,7 @@ import robotImg from "./assets/robot.webp";
 import lnraImg from "./assets/lnra.png";
 import MarioGame from "./MarioGame";
 import WalletConnect from "./irys/WalletConnect";
+import BubbleShooter from './game/bubbleShooter';
 
 const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 600;
@@ -27,6 +28,91 @@ function getRandomX() {
   return Math.random() * (CANVAS_WIDTH - PLATFORM_WIDTH);
 }
 
+const MainMenu = ({ onStartGame, onShowLeaderboard, onShowSettings }) => {
+  return (
+    <div style={{
+      background: 'white',
+      padding: '40px',
+      borderRadius: '20px',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+      textAlign: 'center',
+      width: '300px'
+    }}>
+      <h1 style={{
+        color: '#26A7DE',
+        fontSize: '2.5rem',
+        marginBottom: '40px',
+        fontWeight: 'bold'
+      }}>
+        Irys Shooter
+      </h1>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '15px'
+      }}>
+        <button
+          onClick={onStartGame}
+          style={{
+            padding: '15px',
+            fontSize: '1.2rem',
+            borderRadius: '15px',
+            border: 'none',
+            background: 'linear-gradient(to right, #43cea2, #185a9d)',
+            color: 'white',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'transform 0.2s',
+            ':hover': {
+              transform: 'scale(1.05)'
+            }
+          }}
+        >
+          Play
+        </button>
+        <button
+          onClick={onShowLeaderboard}
+          style={{
+            padding: '15px',
+            fontSize: '1.2rem',
+            borderRadius: '15px',
+            border: 'none',
+            background: 'linear-gradient(to right, #43cea2, #185a9d)',
+            color: 'white',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'transform 0.2s',
+            ':hover': {
+              transform: 'scale(1.05)'
+            }
+          }}
+        >
+          Leaderboard
+        </button>
+        <button
+          onClick={onShowSettings}
+          style={{
+            padding: '15px',
+            fontSize: '1.2rem',
+            borderRadius: '15px',
+            border: 'none',
+            background: 'linear-gradient(to right, #43cea2, #185a9d)',
+            color: 'white',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'transform 0.2s',
+            ':hover': {
+              transform: 'scale(1.05)'
+            }
+          }}
+        >
+          Settings
+        </button>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isStarted, setIsStarted] = useState(false);
@@ -35,6 +121,7 @@ function App() {
   const [isPaused, setIsPaused] = useState(false);
   const animationRef = useRef<number | null>(null);
   const [signer, setSigner] = useState<any>(null);
+  const gameContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isStarted) return;
@@ -275,22 +362,27 @@ function App() {
     // eslint-disable-next-line
   }, [isPaused, isStarted]);
 
+  useEffect(() => {
+    if (gameContainerRef.current) {
+      new BubbleShooter(gameContainerRef.current);
+    }
+  }, []);
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        width: "100vw",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        background: "#222",
-        margin: 0,
-        padding: 0,
-        boxSizing: "border-box",
-      }}
-    >
-      <h1 style={{ color: "#eee", margin: "20px 0" }}>Super Mario на Irys</h1>
+    <div className="game-container">
+      <h1 style={{
+        fontSize: '2.5rem',
+        color: '#2C3E50',
+        marginBottom: '24px',
+        textAlign: 'center',
+        fontWeight: 'bold',
+        background: 'linear-gradient(90deg, #43cea2 0%, #185a9d 100%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        textShadow: '2px 2px 4px rgba(0,0,0,0.1)'
+      }}>
+        Irys Shooter
+      </h1>
       <WalletConnect onConnect={setSigner} />
       {signer && <MarioGame />}
       <div style={{ position: "relative" }}>
@@ -359,46 +451,17 @@ function App() {
         )}
         {/* Start button only before game */}
         {!isStarted && (
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: CANVAS_WIDTH,
-              height: CANVAS_HEIGHT,
-              background: "rgba(34,34,34,0.85)",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "center",
-              border: "4px solid #eee",
-              borderRadius: "16px",
-              zIndex: 2,
-            }}
-          >
-            <h2 style={{ color: "#fff", marginBottom: 24 }}>Ready to play?</h2>
-            <button
-              style={{
-                fontSize: 24,
-                padding: "12px 32px",
-                borderRadius: 8,
-                border: "none",
-                background: "#388e3c",
-                color: "#fff",
-                cursor: "pointer",
-                fontWeight: "bold",
-                boxShadow: "0 2px 8px #0006",
-              }}
-              onClick={() => setIsStarted(true)}
-            >
-              Start
-            </button>
-          </div>
+          <MainMenu
+            onStartGame={() => setIsStarted(true)}
+            onShowLeaderboard={() => {}}
+            onShowSettings={() => {}}
+          />
         )}
       </div>
       <p style={{ color: "#eee" }}>
         Use ← → arrows or A/D. Collect LNRA tokens!
       </p>
+      <div ref={gameContainerRef}></div>
     </div>
   );
 }
