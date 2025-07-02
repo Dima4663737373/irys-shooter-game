@@ -1,5 +1,5 @@
 export default {
-  base: '/bubble-shooter-game/',
+  base: './',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
