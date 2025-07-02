@@ -132,13 +132,13 @@ export class BubbleShooterGame {
       <div id="mode-selection" style="background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:32px; text-align:center; width:400px; margin:0 auto; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); animation: slideInUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
         <h2 id="mode-title" style="margin:0 0 24px 0; color:#333; font-size:2rem; font-weight:bold; animation: bounceIn 1s ease-out 0.3s both; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🎮 Select game mode</h2>
         <div style="display:flex; gap:12px; justify-content:center;">
-          <button id="endless-mode" style="flex:1; padding:12px; font-size:1.1rem; border-radius:8px; border:none; background:#43cea2; color:#fff; font-weight:bold; cursor:pointer; transition:all 0.3s; animation: slideInLeft 0.6s ease-out 0.5s both;">
+          <button id="endless-mode" style="flex:1; padding:12px; font-size:1.1rem; border-radius:8px; border:none; background:#43cea2; color:#fff; font-weight:bold; cursor:pointer; transition:all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); animation: slideInLeft 0.6s ease-out 0.5s both;">
             🎯 Endless mode
           </button>
-          <button id="timed-mode" style="flex:1; padding:12px; font-size:1.1rem; border-radius:8px; border:none; background:#4096ee; color:#fff; font-weight:bold; cursor:pointer; transition:all 0.3s; animation: slideInUp 0.6s ease-out 0.7s both;">
+          <button id="timed-mode" style="flex:1; padding:12px; font-size:1.1rem; border-radius:8px; border:none; background:#4096ee; color:#fff; font-weight:bold; cursor:pointer; transition:all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); animation: slideInUp 0.6s ease-out 0.7s both;">
             ⏱️ 1 minute
           </button>
-          <button id="back-to-menu" style="flex:1; padding:12px; font-size:1.1rem; border-radius:8px; border:none; background:#e74c3c; color:#fff; font-weight:bold; cursor:pointer; transition:all 0.3s; animation: slideInRight 0.6s ease-out 0.9s both;">
+          <button id="back-to-menu" style="flex:1; padding:12px; font-size:1.1rem; border-radius:8px; border:none; background:#e74c3c; color:#fff; font-weight:bold; cursor:pointer; transition:all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); animation: slideInRight 0.6s ease-out 0.9s both;">
             🏠 Back
           </button>
         </div>
@@ -374,9 +374,10 @@ export class BubbleShooterGame {
 
   updateParticles(deltaTime) {
     this.particles = this.particles.filter(p => {
-      p.x += p.dx;
-      p.y += p.dy;
-      p.life -= p.decay;
+      // Плавний рух з використанням deltaTime
+      p.x += p.dx * deltaTime * 60; // 60 FPS baseline
+      p.y += p.dy * deltaTime * 60;
+      p.life -= p.decay * deltaTime * 60;
       
       if (p.life > 0) {
         this.ctx.beginPath();
@@ -426,7 +427,7 @@ export class BubbleShooterGame {
     if (this.shootingBubble.moving) return;
     
     this.playSound('shoot');
-    const BUBBLE_SPEED = 600;
+    const BUBBLE_SPEED = 780; // Збільшено на 30% для швидшого польоту
     // Shoot in the direction of aim, but invert Y velocity for upward motion
     this.shootingBubble.dx = Math.cos(this.shootingAngle) * BUBBLE_SPEED;
     this.shootingBubble.dy = -Math.sin(Math.abs(this.shootingAngle)) * BUBBLE_SPEED;
@@ -473,7 +474,7 @@ export class BubbleShooterGame {
     
     if (this.explodingBubbles.length > 0) {
       for (const b of this.explodingBubbles) {
-        b.progress += 0.08;
+        b.progress += deltaTime * 4.8; // Плавна анімація вибуху
         if (b.progress < 0.1) {
           const {x, y} = this.gridToPixel(b.row, b.col);
           this.createParticles(x, y, b.type, 8);
