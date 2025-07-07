@@ -56,7 +56,21 @@ function showMainMenu() {
       align-items: center;
       justify-content: center;
       box-shadow: 0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);">
-      <h1 style="animation: bounceIn 1s ease-out;">🎯 Irys Shooter</h1>
+      <h1 style="
+        animation: bounceIn 1s ease-out;
+        background: rgba(255,255,255,0.85);
+        backdrop-filter: blur(10px);
+        border: 2px solid #43cea2;
+        border-radius: 18px;
+        box-shadow: 0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(67,206,162,0.2);
+        padding: 24px 36px;
+        margin: 0 0 32px 0;
+        color: #2193b0;
+        font-size: 2.5rem;
+        font-weight: bold;
+        letter-spacing: 1px;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      ">🎯 Irys Shooter</h1>
       <button id="play-btn" style="animation: slideInLeft 0.6s ease-out 0.3s both;">🎮 Play</button>
       <button id="leaderboard-btn" style="animation: slideInUp 0.6s ease-out 0.5s both;">🏆 Leaderboard</button>
       <button id="settings-btn" style="animation: slideInRight 0.6s ease-out 0.7s both;">⚙️ Settings</button>
