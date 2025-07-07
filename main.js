@@ -2,6 +2,10 @@ import { BubbleShooterGame } from './game/bubbleShooter.js';
 
 const app = document.getElementById('app');
 
+// Відразу встановлюємо фон при завантаженні скрипта
+document.body.style.backgroundColor = '#2c3e50';
+document.documentElement.style.backgroundColor = '#2c3e50';
+
 // Глобальна функція для збереження результатів в лідерборд
 function saveToLeaderboard(score, gameMode = 'endless') {
   const playerName = localStorage.getItem('playerName') || 'Anonymous';
@@ -37,7 +41,12 @@ function setGlobalBackground() {
   
   // Простий прямий спосіб - встановлюємо стиль безпосередньо на body
   document.body.style.cssText = `
-    background: url('/menu-bg.jpg?v=${timestamp}') center center / cover no-repeat fixed !important;
+    background-color: #2c3e50 !important;
+    background-image: url('/menu-bg.jpg?v=${timestamp}');
+    background-position: center center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     margin: 0 !important;
     padding: 0 !important;
   `;
@@ -49,18 +58,18 @@ function setGlobalBackground() {
 function smoothTransition(newContent) {
   const app = document.getElementById('app');
   
-  // Fade out
-  app.style.opacity = '0';
+  // Fade out з меншою затримкою
+  app.style.opacity = '0.3';
   
   setTimeout(() => {
     // Змінюємо контент
     app.innerHTML = newContent;
     
-    // Fade in
+    // Fade in швидше
     setTimeout(() => {
       app.style.opacity = '1';
-    }, 50);
-  }, 300);
+    }, 10);
+  }, 100);
 }
 
 function showMainMenu() {
