@@ -26,8 +26,9 @@ function saveToLeaderboard(score, gameMode = 'endless') {
   localStorage.setItem('bubbleLeaderboard', JSON.stringify(topResults));
 }
 
-// Експортуємо функцію для використання в грі
+// Експортуємо функції для використання в грі
 window.saveToLeaderboard = saveToLeaderboard;
+window.setGlobalBackground = setGlobalBackground;
 
 // Універсальна функція для встановлення фону скрізь
 function setGlobalBackground() {
@@ -136,6 +137,9 @@ function showGame() {
     // Запускаємо вибір режиму гри
     game.showModeSelection();
     console.log('showGame: Mode selection started');
+    
+    // Переконуємося що фон встановлений
+    setGlobalBackground();
   } catch (error) {
     console.error('showGame: Error creating game:', error);
   }
