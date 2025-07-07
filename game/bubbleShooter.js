@@ -182,9 +182,26 @@ export class BubbleShooterGame {
     }
   }
 
+  // Функція для плавних переходів в грі
+  smoothGameTransition(newContent, callback = null) {
+    // Fade out
+    this.container.style.opacity = '0';
+    
+    setTimeout(() => {
+      // Змінюємо контент
+      this.container.innerHTML = newContent;
+      
+      // Fade in
+      setTimeout(() => {
+        this.container.style.opacity = '1';
+        if (callback) callback();
+      }, 50);
+    }, 300);
+  }
+
   showModeSelection() {
     console.log('showModeSelection called');
-    this.container.innerHTML = `
+    const content = `
       <div id="mode-selection" style="background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:32px; text-align:center; width:400px; margin:0 auto; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); animation: slideInUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
         <h2 id="mode-title" style="margin:0 0 24px 0; color:#333; font-size:2rem; font-weight:bold; animation: bounceIn 1s ease-out 0.3s both; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🎮 Select game mode</h2>
         <div style="display:flex; gap:12px; justify-content:center;">
@@ -203,57 +220,53 @@ export class BubbleShooterGame {
       </div>
     `;
 
-    // Додаємо hover ефекти та звуки
-    const buttons = this.container.querySelectorAll('button');
-    buttons.forEach(button => {
-      button.onmouseover = () => {
+    this.smoothGameTransition(content, () => {
+      // Додаємо hover ефекти та звуки
+      const buttons = this.container.querySelectorAll('button');
+      buttons.forEach(button => {
+        button.onmouseover = () => {
+          this.playSound('menu');
+          button.style.transform = 'scale(1.05) translateY(-2px)';
+          button.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)';
+        };
+        button.onmouseout = () => {
+          button.style.transform = 'scale(1) translateY(0)';
+          button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+        };
+      });
+
+      this.container.querySelector('#endless-mode').onclick = () => {
+        this.playSound('start');
+        this.animateStartTransition(() => {
+          this.gameMode = 'endless';
+          this.init();
+        });
+      };
+      
+      this.container.querySelector('#timed-mode').onclick = () => {
+        this.playSound('start');
+        this.animateStartTransition(() => {
+          this.gameMode = 'timed';
+          this.timeLeft = 60;
+      this.init();
+        });
+      };
+
+      this.container.querySelector('#back-to-menu').onclick = () => {
         this.playSound('menu');
-        button.style.transform = 'scale(1.05) translateY(-2px)';
-        button.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)';
+        if (typeof window.showMainMenu === 'function') {
+          window.showMainMenu();
+        }
       };
-      button.onmouseout = () => {
-        button.style.transform = 'scale(1) translateY(0)';
-        button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-      };
-    });
 
-    this.container.querySelector('#endless-mode').onclick = () => {
-      this.playSound('start');
-      this.animateStartTransition(() => {
-        this.gameMode = 'endless';
-        this.init();
-      });
-    };
-    
-    this.container.querySelector('#timed-mode').onclick = () => {
-      this.playSound('start');
-      this.animateStartTransition(() => {
-        this.gameMode = 'timed';
-        this.timeLeft = 60;
-    this.init();
-      });
-    };
+      // Додаємо анімацію плаваючих кульок
+      this.startFloatingBubblesAnimation();
 
-    this.container.querySelector('#back-to-menu').onclick = () => {
-      this.playSound('menu');
-      if (typeof window.showMainMenu === 'function') {
-        window.showMainMenu();
+      // Встановлюємо фон через main.js
+      if (typeof window.setGlobalBackground === 'function') {
+        window.setGlobalBackground();
       }
-    };
-
-    // Додаємо анімацію плаваючих кульок
-    this.startFloatingBubblesAnimation();
-
-    // Відтворюємо музику головного меню (відключено)
-    // if (this.menuMusic && this.menuMusic.paused) {
-    //   this.menuMusic.currentTime = 0;
-    //   this.menuMusic.play().catch(()=>{});
-    // }
-
-    // Встановлюємо фон через main.js
-    if (typeof window.setGlobalBackground === 'function') {
-      window.setGlobalBackground();
-    }
+    });
   }
 
   animateStartTransition(callback) {
@@ -323,7 +336,7 @@ export class BubbleShooterGame {
     const totalBubblesWidth = this.cols * this.bubbleRadius * 2;
     const sidePadding = (gameWidth - totalBubblesWidth) / 2;
     
-    this.container.innerHTML = `
+    const content = `
       <div style="width:${gameWidth}px; margin:0 auto;">
         <div class="game-header" style="background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); padding:12px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; gap:12px; align-items:center;">
@@ -351,21 +364,23 @@ export class BubbleShooterGame {
       </div>
     `;
 
-    this.canvas = this.container.querySelector('#game-canvas');
-    this.ctx = this.canvas.getContext('2d');
-    this.pauseMenu = this.container.querySelector('#pause-menu');
-    this.gameOverMenu = this.container.querySelector('#game-over');
-    this.scoreEl = this.container.querySelector('#score');
-    this.timerEl = this.gameMode === 'timed' ? this.container.querySelector('#timer') : null;
-    this.playAreaWidth = playAreaWidth;
-    this.sidePadding = sidePadding;
-    this.shooterY = gameHeight - this.bubbleRadius * 1.5; // Опускаємо стрілець трохи нижче
-    this.addEventListeners();
-    this.createGrid();
-    this.spawnShootingBubble();
-    this.difficultyMultiplier = 1;
-    if (this.difficultyInterval) clearInterval(this.difficultyInterval);
-    this.startGame();
+    this.smoothGameTransition(content, () => {
+      this.canvas = this.container.querySelector('#game-canvas');
+      this.ctx = this.canvas.getContext('2d');
+      this.pauseMenu = this.container.querySelector('#pause-menu');
+      this.gameOverMenu = this.container.querySelector('#game-over');
+      this.scoreEl = this.container.querySelector('#score');
+      this.timerEl = this.gameMode === 'timed' ? this.container.querySelector('#timer') : null;
+      this.playAreaWidth = playAreaWidth;
+      this.sidePadding = sidePadding;
+      this.shooterY = gameHeight - this.bubbleRadius * 1.5; // Опускаємо стрілець трохи нижче
+      this.addEventListeners();
+      this.createGrid();
+      this.spawnShootingBubble();
+      this.difficultyMultiplier = 1;
+      if (this.difficultyInterval) clearInterval(this.difficultyInterval);
+      this.startGame();
+    });
   }
 
   addEventListeners() {
