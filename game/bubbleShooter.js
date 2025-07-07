@@ -250,11 +250,10 @@ export class BubbleShooterGame {
     //   this.menuMusic.play().catch(()=>{});
     // }
 
-    // Фон встановлюється в main.js через setGlobalBackground()
-    // const timestamp = Date.now();
-    // console.log('Setting background with timestamp:', timestamp);
-    // document.body.setAttribute('style', `background: url('/menu-bg.jpg?v=${timestamp}') center center / cover no-repeat fixed !important;`);
-    // console.log('Body style after setting:', document.body.getAttribute('style'));
+    // Встановлюємо фон через main.js
+    if (typeof window.setGlobalBackground === 'function') {
+      window.setGlobalBackground();
+    }
   }
 
   animateStartTransition(callback) {
@@ -830,9 +829,10 @@ export class BubbleShooterGame {
       this.menuMusic.currentTime = 0;
     }
 
-    // Фон встановлюється в main.js через setGlobalBackground()
-    // const timestamp = Date.now();
-    // document.body.setAttribute('style', `background: url('/menu-bg.jpg?v=${timestamp}') center center / cover no-repeat fixed !important;`);
+    // Встановлюємо фон під час гри
+    if (typeof window.setGlobalBackground === 'function') {
+      window.setGlobalBackground();
+    }
   }
 
   loop(currentTime) {

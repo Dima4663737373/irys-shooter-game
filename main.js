@@ -35,30 +35,14 @@ function setGlobalBackground() {
   const timestamp = Date.now();
   console.log('setGlobalBackground: Setting background with timestamp:', timestamp);
   
-  // Видаляємо старий стиль
-  const existingStyle = document.getElementById('menu-bg-style');
-  if (existingStyle) existingStyle.remove();
-  
-  // Створюємо новий CSS з псевдоелементом
-  const style = document.createElement('style');
-  style.id = 'menu-bg-style';
-  style.textContent = `
-    /* Блокуємо існуючі псевдоелементи */
-    body:before, body::before { 
-      display: none !important; 
-    }
-    body:after, body::after { 
-      display: none !important; 
-    }
-    
-    /* Встановлюємо наш фон скрізь */
-    body {
-      background: url('/menu-bg.jpg?v=${timestamp}') center center / cover no-repeat fixed !important;
-    }
+  // Простий прямий спосіб - встановлюємо стиль безпосередньо на body
+  document.body.style.cssText = `
+    background: url('/menu-bg.jpg?v=${timestamp}') center center / cover no-repeat fixed !important;
+    margin: 0 !important;
+    padding: 0 !important;
   `;
-  document.head.appendChild(style);
   
-  console.log('setGlobalBackground: Added CSS style for background');
+  console.log('setGlobalBackground: Set body style directly');
 }
 
 function showMainMenu() {
