@@ -7,6 +7,8 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
+  background: url('/menu-bg.jpg') center center / cover no-repeat fixed;
+  transition: opacity 0.3s ease-in-out;
 }
 
 #app {
@@ -15,6 +17,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* Fade transition for content changes */
+.content-transition {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.content-transition.fade-in {
+  opacity: 1;
 }
 
 .main-menu {

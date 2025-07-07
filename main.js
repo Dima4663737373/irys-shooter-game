@@ -45,9 +45,27 @@ function setGlobalBackground() {
   console.log('setGlobalBackground: Set body style directly');
 }
 
+// Функція для плавних переходів між екранами
+function smoothTransition(newContent) {
+  const app = document.getElementById('app');
+  
+  // Fade out
+  app.style.opacity = '0';
+  
+  setTimeout(() => {
+    // Змінюємо контент
+    app.innerHTML = newContent;
+    
+    // Fade in
+    setTimeout(() => {
+      app.style.opacity = '1';
+    }, 50);
+  }, 300);
+}
+
 function showMainMenu() {
   setGlobalBackground();
-  app.innerHTML = `
+  const content = `
     <div class="main-menu" style="
       min-height: 100vh;
       width: 100vw;
@@ -77,36 +95,41 @@ function showMainMenu() {
     </div>
   `;
   
-  // Додаємо звукові ефекти для кнопок
-  const buttons = document.querySelectorAll('.main-menu button');
-  buttons.forEach(button => {
-    button.addEventListener('mouseenter', () => {
-      // Простий звук hover
-      if (window.AudioContext || window.webkitAudioContext) {
-        try {
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          const oscillator = audioContext.createOscillator();
-          const gainNode = audioContext.createGain();
-          
-          oscillator.connect(gainNode);
-          gainNode.connect(audioContext.destination);
-          
-          oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
-          gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-          
-          oscillator.start(audioContext.currentTime);
-          oscillator.stop(audioContext.currentTime + 0.15);
-        } catch (e) {
-          // Тихо ігноруємо помилки звуку
-        }
-      }
-    });
-  });
+  smoothTransition(content);
   
-  document.getElementById('play-btn').onclick = () => showGame();
-  document.getElementById('leaderboard-btn').onclick = () => showLeaderboard();
-  document.getElementById('settings-btn').onclick = () => showSettings();
+  // Затримка для додавання event listeners після fade in
+  setTimeout(() => {
+    // Додаємо звукові ефекти для кнопок
+    const buttons = document.querySelectorAll('.main-menu button');
+    buttons.forEach(button => {
+      button.addEventListener('mouseenter', () => {
+        // Простий звук hover
+        if (window.AudioContext || window.webkitAudioContext) {
+          try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.15);
+          } catch (e) {
+            // Тихо ігноруємо помилки звуку
+          }
+        }
+      });
+    });
+    
+    document.getElementById('play-btn').onclick = () => showGame();
+    document.getElementById('leaderboard-btn').onclick = () => showLeaderboard();
+    document.getElementById('settings-btn').onclick = () => showSettings();
+  }, 350);
 }
 
 function showGame() {
@@ -115,32 +138,36 @@ function showGame() {
   // Зберігаємо фон під час гри
   setGlobalBackground();
   
-  app.innerHTML = `
+  const content = `
     <div class="game-container">
       <canvas id="gameCanvas"></canvas>
     </div>
   `;
   
+  smoothTransition(content);
+  
   console.log('showGame: HTML created, canvas element:', document.getElementById('gameCanvas'));
   
   window.showMainMenu = showMainMenu;
   
-  try {
-    const gameContainer = document.querySelector('.game-container');
-    console.log('showGame: Game container found:', gameContainer);
-    
-    const game = new BubbleShooterGame(gameContainer);
-    console.log('showGame: Game instance created:', game);
-    
-    // Запускаємо вибір режиму гри
-    game.showModeSelection();
-    console.log('showGame: Mode selection started');
-    
-    // Переконуємося що фон встановлений
-    setGlobalBackground();
-  } catch (error) {
-    console.error('showGame: Error creating game:', error);
-  }
+  setTimeout(() => {
+    try {
+      const gameContainer = document.querySelector('.game-container');
+      console.log('showGame: Game container found:', gameContainer);
+      
+      const game = new BubbleShooterGame(gameContainer);
+      console.log('showGame: Game instance created:', game);
+      
+      // Запускаємо вибір режиму гри
+      game.showModeSelection();
+      console.log('showGame: Mode selection started');
+      
+      // Переконуємося що фон встановлений
+      setGlobalBackground();
+    } catch (error) {
+      console.error('showGame: Error creating game:', error);
+    }
+  }, 350);
 }
 
 function showLeaderboard() {
@@ -159,7 +186,7 @@ function showLeaderboard() {
   if (!tableRows) {
     tableRows = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#999; font-style:italic;">No results yet</td></tr>';
   }
-  app.innerHTML = `
+  const content = `
     <div class="leaderboard" style="background:#ffffff; border:2px solid #43cea2; border-radius:18px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(67,206,162,0.2); padding:36px 32px; text-align:center; max-width:580px; margin:0 auto;">
       <h2 style="font-size:2rem; color:#111; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🏆 Leaderboard</h2>
       <table style="width:100%; border-collapse:collapse; margin:24px 0; font-size:1.1rem;">
@@ -179,13 +206,17 @@ function showLeaderboard() {
       <button id="back-menu" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Back</button>
     </div>
   `;
-  document.getElementById('back-menu').onclick = showMainMenu;
-  document.getElementById('clear-leaderboard').onclick = function() {
-    if (confirm('Are you sure you want to clear the leaderboard?')) {
-      localStorage.removeItem('bubbleLeaderboard');
-      showLeaderboard();
-    }
-  };
+  smoothTransition(content);
+  
+  setTimeout(() => {
+    document.getElementById('back-menu').onclick = showMainMenu;
+    document.getElementById('clear-leaderboard').onclick = function() {
+      if (confirm('Are you sure you want to clear the leaderboard?')) {
+        localStorage.removeItem('bubbleLeaderboard');
+        showLeaderboard();
+      }
+    };
+  }, 350);
 }
 
 function showSettings() {
@@ -193,7 +224,7 @@ function showSettings() {
   setGlobalBackground();
   
   const savedName = localStorage.getItem('playerName') || '';
-  app.innerHTML = `
+  const content = `
     <div class="settings" style="background:#ffffff; border:2px solid #43cea2; border-radius:24px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(67,206,162,0.2); padding:48px 32px; text-align:center; max-width:340px; margin:0 auto;">
       <h2 style="font-size:2rem; color:#2193b0; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">⚙️ Settings</h2>
       <form id="settings-form">
@@ -207,17 +238,21 @@ function showSettings() {
       <div id="settings-msg" style="color:#2193b0; margin-top:14px; font-size:1.05rem;"></div>
     </div>
   `;
-  document.getElementById('back-menu').onclick = showMainMenu;
-  document.getElementById('settings-form').onsubmit = function(e) {
-    e.preventDefault();
-    const name = document.getElementById('player-name').value.trim();
-    if (name.length === 0) {
-      document.getElementById('settings-msg').textContent = 'Please enter your name.';
-      return;
-    }
-    localStorage.setItem('playerName', name);
-    document.getElementById('settings-msg').textContent = 'Name saved!';
-  };
+  smoothTransition(content);
+  
+  setTimeout(() => {
+    document.getElementById('back-menu').onclick = showMainMenu;
+    document.getElementById('settings-form').onsubmit = function(e) {
+      e.preventDefault();
+      const name = document.getElementById('player-name').value.trim();
+      if (name.length === 0) {
+        document.getElementById('settings-msg').textContent = 'Please enter your name.';
+        return;
+      }
+      localStorage.setItem('playerName', name);
+      document.getElementById('settings-msg').textContent = 'Name saved!';
+    };
+  }, 350);
 }
 
 // Запуск з головного меню
