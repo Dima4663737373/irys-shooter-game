@@ -105,12 +105,12 @@ export class BubbleShooterGame {
     try {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
       this.loadSounds();
-      // === Додаємо музику для головного меню ===
-      if (!this.menuMusic) {
-        this.menuMusic = new Audio('main-menu.mp3');
-        this.menuMusic.loop = true;
-        this.menuMusic.volume = 0.4;
-      }
+      // === Музика для головного меню відключена ===
+      // if (!this.menuMusic) {
+      //   this.menuMusic = new Audio('main-menu.mp3');
+      //   this.menuMusic.loop = true;
+      //   this.menuMusic.volume = 0.4;
+      // }
     } catch (e) {
       console.warn('Audio not supported');
       this.soundEnabled = false;
@@ -244,15 +244,15 @@ export class BubbleShooterGame {
     // Додаємо анімацію плаваючих кульок
     this.startFloatingBubblesAnimation();
 
-    // Відтворюємо музику головного меню
-    if (this.menuMusic && this.menuMusic.paused) {
-      this.menuMusic.currentTime = 0;
-      this.menuMusic.play().catch(()=>{});
-    }
+    // Відтворюємо музику головного меню (відключено)
+    // if (this.menuMusic && this.menuMusic.paused) {
+    //   this.menuMusic.currentTime = 0;
+    //   this.menuMusic.play().catch(()=>{});
+    // }
 
     const timestamp = Date.now();
     console.log('Setting background with timestamp:', timestamp);
-    document.body.setAttribute('style', `background: url('/menu-bg.png?v=${timestamp}') center center / cover no-repeat fixed !important;`);
+    document.body.setAttribute('style', `background: url('/menu-bg.jpg?v=${timestamp}') center center / cover no-repeat fixed !important;`);
     console.log('Body style after setting:', document.body.getAttribute('style'));
   }
 
@@ -830,7 +830,7 @@ export class BubbleShooterGame {
     }
 
     const timestamp = Date.now();
-    document.body.setAttribute('style', `background: url('/menu-bg.png?v=${timestamp}') center center / cover no-repeat fixed !important;`);
+    document.body.setAttribute('style', `background: url('/menu-bg.jpg?v=${timestamp}') center center / cover no-repeat fixed !important;`);
   }
 
   loop(currentTime) {
@@ -932,6 +932,7 @@ export class BubbleShooterGame {
   }
 
   drawBubble(x, y, type) {
+    console.log('drawBubble called with type:', type, 'at position:', x, y);
     this.ctx.save();
     
     // Кольори для кульок
@@ -942,16 +943,21 @@ export class BubbleShooterGame {
       'kyan': '#1ABC9C'
     };
     
+    console.log('Using color:', colors[type] || '#999999', 'for type:', type);
+    
     // Тінь
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
     this.ctx.shadowBlur = 8;
     this.ctx.shadowOffsetY = 2;
     
     // Основна кулька
-    this.ctx.fillStyle = colors[type] || '#999999';
+    const color = colors[type] || '#999999';
+    console.log('Setting fillStyle to:', color);
+    this.ctx.fillStyle = color;
     this.ctx.beginPath();
     this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
     this.ctx.fill();
+    console.log('Bubble drawn with color:', this.ctx.fillStyle);
     
     // Глянець
     this.ctx.shadowColor = 'transparent';
