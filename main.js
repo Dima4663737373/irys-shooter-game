@@ -114,9 +114,13 @@ function showGame() {
   // Зберігаємо фон під час гри
   setGlobalBackground();
   
-  app.innerHTML = `<div class="game-canvas"></div>`;
+  app.innerHTML = `
+    <div class="game-container">
+      <canvas id="gameCanvas"></canvas>
+    </div>
+  `;
   window.showMainMenu = showMainMenu;
-  new BubbleShooterGame(document.querySelector('.game-canvas'));
+  new BubbleShooterGame(document.querySelector('.game-container'));
 }
 
 function showLeaderboard() {
