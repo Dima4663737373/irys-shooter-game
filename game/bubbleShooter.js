@@ -23,7 +23,7 @@ export class BubbleShooterGame {
     this.sidePadding = 60; // Було 25, тепер 60px для вужчого поля
     this.shooterY = this.canvas.height - this.bubbleRadius * 2; // Більше місця для стрільця
     
-    this.bubbleTypes = ['blue', 'red', 'yellow', 'kyan', 'stone']; // stone — шкідлива
+    this.bubbleTypes = ['blue', 'red', 'yellow', 'kyan']; // Прибрали stone
     this.grid = [];
     this.shootingBubble = null;
     this.score = 0;
@@ -71,19 +71,34 @@ export class BubbleShooterGame {
   }
 
   async loadImages() {
+    console.log('loadImages: Starting to load bubble images:', this.bubbleTypes);
+    
     const imagePromises = this.bubbleTypes.map(type => {
       return new Promise((resolve, reject) => {
         const img = new Image();
-        img.onload = () => resolve({ type, img });
-        img.onerror = reject;
-        img.src = `ball-${type}.png`;
+        img.onload = () => {
+          console.log(`loadImages: Successfully loaded ${type}`);
+          resolve({ type, img });
+        };
+        img.onerror = (error) => {
+          console.error(`loadImages: Failed to load ${type}:`, error);
+                     reject(error);
+        };
+        img.src = `/ball-${type}.png`;
+        console.log(`loadImages: Loading ${type} from /ball-${type}.png`);
       });
     });
 
-    const loadedImages = await Promise.all(imagePromises);
-    loadedImages.forEach(({type, img}) => {
-      this.bubbleImages[type] = img;
-    });
+    try {
+      const loadedImages = await Promise.all(imagePromises);
+      loadedImages.forEach(({type, img}) => {
+        this.bubbleImages[type] = img;
+        console.log(`loadImages: Added ${type} to bubbleImages`);
+      });
+      console.log('loadImages: All images loaded successfully');
+    } catch (error) {
+      console.error('loadImages: Error loading images:', error);
+    }
   }
 
   initSounds() {
@@ -377,8 +392,8 @@ export class BubbleShooterGame {
       const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
       for (let col = 0; col < colsInRow; col++) {
         if (Math.random() < 0.8) {
-          // stone не може зʼявитися у стартових рядах випадково
-          const colorTypes = this.bubbleTypes.filter(t => t !== 'stone');
+              // Використовуємо всі доступні типи кульок
+    const colorTypes = this.bubbleTypes;
           const bubbleType = Math.random() < 0.6 ? colorTypes[Math.floor(Math.random() * colorTypes.length)] : colorTypes[Math.floor(Math.random() * colorTypes.length)];
           this.grid[row][col] = {
             type: bubbleType,
@@ -918,43 +933,41 @@ export class BubbleShooterGame {
 
   drawBubble(x, y, type) {
     this.ctx.save();
-    this.ctx.imageSmoothingEnabled = true;
-    this.ctx.imageSmoothingQuality = 'high';
-    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-    this.ctx.shadowBlur = 10;
-    this.ctx.shadowOffsetY = 3;
+    
+    // Кольори для кульок
+    const colors = {
+      'blue': '#4A90E2',
+      'red': '#E74C3C',
+      'yellow': '#F1C40F',
+      'kyan': '#1ABC9C'
+    };
+    
+    // Тінь
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    this.ctx.shadowBlur = 8;
+    this.ctx.shadowOffsetY = 2;
+    
+    // Основна кулька
+    this.ctx.fillStyle = colors[type] || '#999999';
     this.ctx.beginPath();
     this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
-    this.ctx.fillStyle = 'white';
     this.ctx.fill();
+    
+    // Глянець
+    this.ctx.shadowColor = 'transparent';
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     this.ctx.beginPath();
-    this.ctx.arc(x, y, this.bubbleRadius - 2, 0, Math.PI * 2);
-    this.ctx.clip();
-    if (type === 'stone') {
-      // Малюємо чорний круг
-      this.ctx.fillStyle = '#111';
-      this.ctx.beginPath();
-      this.ctx.arc(x, y, this.bubbleRadius - 3, 0, Math.PI * 2);
-      this.ctx.fill();
-    } else {
-      const img = this.bubbleImages[type];
-      if (img) {
-        const spriteSize = this.bubbleRadius * 1.8;
-        this.ctx.drawImage(
-          img,
-          x - spriteSize / 2,
-          y - spriteSize / 2,
-          spriteSize,
-          spriteSize
-        );
-      }
-    }
-    this.ctx.restore();
+    this.ctx.arc(x - 6, y - 6, this.bubbleRadius / 2.5, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Рамка
+    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    this.ctx.lineWidth = 1;
     this.ctx.beginPath();
     this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
-    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-    this.ctx.lineWidth = 1;
     this.ctx.stroke();
+    
+    this.ctx.restore();
   }
 
   drawBubbleAnimated(x, y, type, progress) {
