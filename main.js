@@ -111,6 +111,8 @@ function showMainMenu() {
 }
 
 function showGame() {
+  console.log('showGame: Starting game initialization');
+  
   // Зберігаємо фон під час гри
   setGlobalBackground();
   
@@ -119,8 +121,24 @@ function showGame() {
       <canvas id="gameCanvas"></canvas>
     </div>
   `;
+  
+  console.log('showGame: HTML created, canvas element:', document.getElementById('gameCanvas'));
+  
   window.showMainMenu = showMainMenu;
-  new BubbleShooterGame(document.querySelector('.game-container'));
+  
+  try {
+    const gameContainer = document.querySelector('.game-container');
+    console.log('showGame: Game container found:', gameContainer);
+    
+    const game = new BubbleShooterGame(gameContainer);
+    console.log('showGame: Game instance created:', game);
+    
+    // Запускаємо вибір режиму гри
+    game.showModeSelection();
+    console.log('showGame: Mode selection started');
+  } catch (error) {
+    console.error('showGame: Error creating game:', error);
+  }
 }
 
 function showLeaderboard() {
