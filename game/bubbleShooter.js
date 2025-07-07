@@ -1,39 +1,73 @@
 export class BubbleShooterGame {
   constructor(container) {
     this.container = container;
-    this.isPaused = false;
-    this.score = 0;
-    this.rows = 11;
-    this.cols = 14;  // Зменшуємо кількість колонок для правильного відступу
-    this.bubbleRadius = 20;
-    this.bubbleImages = {};
-    this.bubbleTypes = ['blue', 'red', 'yellow', 'kyan', 'heart'];
+    this.canvas = container.querySelector('#gameCanvas');
+    this.ctx = this.canvas.getContext('2d');
+    
+    // Оптимізація Canvas для високих FPS
+    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.imageSmoothingQuality = 'medium'; // Змінюємо з 'high' на 'medium' для FPS
+    
+    // Кеш для позицій бульбашок (spatial optimization)
+    this.activeBubbles = new Map(); // row,col -> {x, y, type}
+    this.bubbleQuadTree = new Map(); // spatial partitioning for collision
+    
+    this.canvas.width = 400;
+    this.canvas.height = 600;
+    this.playAreaWidth = this.canvas.width;
+    this.playAreaHeight = this.canvas.height - 100;
+    
+    this.bubbleRadius = 18;
+    this.cols = 12; // Зменшуємо з 13 до 12 для більшого простору
+    this.rows = 12; // Зменшуємо з 14 до 12 для менш переповненого поля
+    this.sidePadding = 60; // Було 25, тепер 60px для вужчого поля
+    this.shooterY = this.canvas.height - this.bubbleRadius * 2; // Більше місця для стрільця
+    
+    this.bubbleTypes = ['blue', 'red', 'yellow', 'kyan', 'stone']; // stone — шкідлива
     this.grid = [];
     this.shootingBubble = null;
-    this.shootingAngle = Math.PI / 2;
-    this.isShooting = false;
-    this.explodingBubbles = [];
-    this.particles = []; // Для ефекту частинок
-    this.isGameOver = false;
+    this.score = 0;
+    this.gameMode = 'endless';
+    this.timeLeft = 60;
+    this.dropTimer = 10;
     this.lastTime = 0;
-    this.gameMode = null; // 'endless' або 'timed'
-    this.timeLeft = 60; // для режиму на 1 хвилину
-    this.dropTimer = 9; // Таймер для опускання кульок
-    this.shooterY = 0; // Позиція стрільця по Y
+    this.isPaused = false;
+    this.isGameOver = false;
+    this.explodingBubbles = [];
+    this.particles = [];
     
-    // Sound system
+    // FPS tracking
+    this.frameCount = 0;
+    this.lastFPSUpdate = 0;
+    this.currentFPS = 0;
+    
+    // === НОВІ СИСТЕМИ ДЛЯ СКЛАДНОСТІ ===
+    this.difficulty = 1; // Початкова складність
+    this.difficultyMultiplier = 1; // Множник складності для endless
+    this.difficultyInterval = null; // Таймер підвищення складності
+    this.shotsCount = 0; // Лічильник пострілів
+    this.consecutiveHits = 0; // Послідовні влучення
+    this.bubbleGenerationCounter = 0; // Лічильник генерацій
+    this.recentColors = []; // Останні кольори на полі
+    this.colorDistribution = new Map(); // Розподіл кольорів на полі
+    this.lastPatternType = null; // Останній згенерований патерн
+    
+    this.bubbleImages = {};
     this.sounds = {};
-    this.soundEnabled = true;
-    this.audioContext = null;
     
-    // Animation system
-    this.animationTime = 0;
-    this.menuAnimationOffset = 0;
+    this.allowedBottomRows = 1; // Лише 1 рядок запасу
     
+    this.fps = 0;
+    this.lastFpsUpdate = 0;
+    this.frameCounter = 0;
+    
+    this.threatRowTimer = null;
+    
+    this.createGrid();
     this.loadImages().then(() => {
-      this.initSounds();
-      this.showModeSelection();
+      this.spawnShootingBubble();
     });
+    this.initSounds();
   }
 
   async loadImages() {
@@ -56,6 +90,12 @@ export class BubbleShooterGame {
     try {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
       this.loadSounds();
+      // === Додаємо музику для головного меню ===
+      if (!this.menuMusic) {
+        this.menuMusic = new Audio('main-menu.mp3');
+        this.menuMusic.loop = true;
+        this.menuMusic.volume = 0.4;
+      }
     } catch (e) {
       console.warn('Audio not supported');
       this.soundEnabled = false;
@@ -128,6 +168,7 @@ export class BubbleShooterGame {
   }
 
   showModeSelection() {
+    console.log('showModeSelection called');
     this.container.innerHTML = `
       <div id="mode-selection" style="background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:32px; text-align:center; width:400px; margin:0 auto; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); animation: slideInUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
         <h2 id="mode-title" style="margin:0 0 24px 0; color:#333; font-size:2rem; font-weight:bold; animation: bounceIn 1s ease-out 0.3s both; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🎮 Select game mode</h2>
@@ -174,7 +215,7 @@ export class BubbleShooterGame {
       this.animateStartTransition(() => {
         this.gameMode = 'timed';
         this.timeLeft = 60;
-        this.init();
+    this.init();
       });
     };
 
@@ -187,6 +228,17 @@ export class BubbleShooterGame {
 
     // Додаємо анімацію плаваючих кульок
     this.startFloatingBubblesAnimation();
+
+    // Відтворюємо музику головного меню
+    if (this.menuMusic && this.menuMusic.paused) {
+      this.menuMusic.currentTime = 0;
+      this.menuMusic.play().catch(()=>{});
+    }
+
+    const timestamp = Date.now();
+    console.log('Setting background with timestamp:', timestamp);
+    document.body.setAttribute('style', `background: url('/menu-bg.png?v=${timestamp}') center center / cover no-repeat fixed !important;`);
+    console.log('Body style after setting:', document.body.getAttribute('style'));
   }
 
   animateStartTransition(callback) {
@@ -264,12 +316,12 @@ export class BubbleShooterGame {
             ${this.gameMode === 'timed' ? `<span id="timer" style="display:inline-block; padding:8px 16px; font-size:1.1rem; border-radius:8px; background:#FF6B6B; color:#fff; font-weight:bold;">Time: 60s</span>` : ''}
           </div>
           <button id="pause-btn" class="pause-btn" style="padding:8px 16px; font-size:1.1rem; border-radius:8px; border:none; background:#43cea2; color:#fff; font-weight:bold; cursor:pointer;">Pause</button>
-        </div>
-        <div style="position:relative;">
+      </div>
+      <div style="position:relative;">
           <canvas id="game-canvas" width="${gameWidth}" height="${gameHeight}" style="background:#666; border-radius:12px;"></canvas>
-          <div id="pause-menu" class="hidden">
-            <h2>Paused</h2>
-            <button id="resume-btn">Resume</button>
+        <div id="pause-menu" class="hidden">
+          <h2>Paused</h2>
+          <button id="resume-btn">Resume</button>
             <button id="exit-btn" style="background:#e74c3c; color:#fff;">🚪 Exit</button>
           </div>
           <div id="game-over" class="hidden" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); padding:30px; border-radius:20px; text-align:center; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);">
@@ -296,6 +348,8 @@ export class BubbleShooterGame {
     this.addEventListeners();
     this.createGrid();
     this.spawnShootingBubble();
+    this.difficultyMultiplier = 1;
+    if (this.difficultyInterval) clearInterval(this.difficultyInterval);
     this.startGame();
   }
 
@@ -312,46 +366,329 @@ export class BubbleShooterGame {
   createGrid() {
     this.grid = [];
     for (let row = 0; row < this.rows; row++) {
-      const arr = [];
+      this.grid[row] = [];
       for (let col = 0; col < this.cols; col++) {
-        if (row < 7) {
-          // Перевіряємо колір зліва та зверху для уникнення занадто простих комбінацій
-          let availableColors = [...this.bubbleTypes];
-          
-          // Перевіряємо колір зліва
-          if (col > 0 && arr[col - 1]) {
-            const leftColor = arr[col - 1].type;
-            // 70% шанс уникнути такого ж кольору
-            if (Math.random() < 0.7) {
-              availableColors = availableColors.filter(color => color !== leftColor);
-            }
-          }
-          
-          // Перевіряємо колір зверху
-          if (row > 0 && this.grid[row - 1][col]) {
-            const topColor = this.grid[row - 1][col].type;
-            // 70% шанс уникнути такого ж кольору
-            if (Math.random() < 0.7) {
-              availableColors = availableColors.filter(color => color !== topColor);
-            }
-          }
-          
-          // Якщо не залишилось доступних кольорів, використовуємо всі
-          if (availableColors.length === 0) {
-            availableColors = [...this.bubbleTypes];
-          }
-          
-          const type = availableColors[Math.floor(Math.random() * availableColors.length)];
-          arr.push({
-            type,
-            row,
-            col
-          });
-        } else {
-          arr.push(null);
+        this.grid[row][col] = null;
+      }
+    }
+    // Стартові ряди не доходять до allowedBottomRows
+    const startingRows = Math.max(1, this.rows - this.allowedBottomRows - 1);
+    for (let row = 0; row < startingRows; row++) {
+      const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
+      for (let col = 0; col < colsInRow; col++) {
+        if (Math.random() < 0.8) {
+          // stone не може зʼявитися у стартових рядах випадково
+          const colorTypes = this.bubbleTypes.filter(t => t !== 'stone');
+          const bubbleType = Math.random() < 0.6 ? colorTypes[Math.floor(Math.random() * colorTypes.length)] : colorTypes[Math.floor(Math.random() * colorTypes.length)];
+          this.grid[row][col] = {
+            type: bubbleType,
+            row: row,
+            col: col
+          };
         }
       }
-      this.grid.push(arr);
+    }
+    // Додаємо 1-2 кам'яних кульки у випадкові зайняті місця стартових рядів
+    const stoneCount = Math.floor(Math.random() * 2) + 1;
+    let placed = 0;
+    let attempts = 0;
+    while (placed < stoneCount && attempts < 100) {
+      const row = Math.floor(Math.random() * startingRows);
+      const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
+      const col = Math.floor(Math.random() * colsInRow);
+      if (this.grid[row][col] && this.grid[row][col].type !== 'stone') {
+        this.grid[row][col] = {
+          type: 'stone',
+          row: row,
+          col: col
+        };
+        placed++;
+        console.log('STONE placed at', row, col);
+      }
+      attempts++;
+    }
+    this.updateColorDistribution();
+    this.rebuildActiveBubblesCache();
+  }
+
+  // === НОВА ЛОГІКА РОЗУМНОЇ ГЕНЕРАЦІЇ ===
+  generateSmartStartingBubbles() {
+    const startingRows = 4;
+    for (let row = 0; row < startingRows; row++) {
+      const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
+      for (let col = 0; col < colsInRow; col++) {
+        if (Math.random() < 0.8) { // Було 0.75, тепер 80% заповнення
+          // 60% шанс кластерної генерації, 40% balanced
+          const bubbleType = Math.random() < 0.6 ? this.getClusteredBubbleType(row, col) : this.getBalancedBubbleType();
+          this.grid[row][col] = {
+            type: bubbleType,
+            row: row,
+            col: col
+          };
+        }
+      }
+    }
+    this.updateColorDistribution();
+  }
+
+  // Розумний вибір типу кульки
+  getSmartBubbleType(row, col, strategy = 'adaptive') {
+    switch (strategy) {
+      case 'balanced':
+        return this.getBalancedBubbleType();
+      case 'clustered':
+        return this.getClusteredBubbleType(row, col);
+      case 'challenging':
+        return this.getChallengingBubbleType(row, col);
+      case 'strategic':
+        return this.getStrategicBubbleType();
+      default:
+        return this.getAdaptiveBubbleType(row, col);
+    }
+  }
+
+  // Збалансований вибір кольору
+  getBalancedBubbleType() {
+    // stone не може бути для звичайних кульок
+    let minCount = Infinity;
+    let rareColors = [];
+    for (const type of this.bubbleTypes) {
+      if (type === 'stone') continue;
+      const count = this.colorDistribution.get(type) || 0;
+      if (count < minCount) {
+        minCount = count;
+        rareColors = [type];
+      } else if (count === minCount) {
+        rareColors.push(type);
+      }
+    }
+    return rareColors[Math.floor(Math.random() * rareColors.length)];
+  }
+
+  // Кластерний вибір (схожі кольори поруч)
+  getClusteredBubbleType(row, col) {
+    const neighbors = this.getNeighbors(row, col);
+    const neighborColors = neighbors
+      .filter(({r, c}) => this.grid[r] && this.grid[r][c] && this.grid[r][c].type !== 'stone')
+      .map(({r, c}) => this.grid[r][c].type);
+    if (neighborColors.length > 0) {
+      if (Math.random() < 0.7) {
+        return neighborColors[Math.floor(Math.random() * neighborColors.length)];
+      }
+    }
+    // stone не може бути для кластерних
+    const colorTypes = this.bubbleTypes.filter(t => t !== 'stone');
+    return colorTypes[Math.floor(Math.random() * colorTypes.length)];
+  }
+
+  // Складний вибір (уникати легких комбінацій)
+  getChallengingBubbleType(row, col) {
+    const neighbors = this.getNeighbors(row, col);
+    const neighborColors = neighbors
+      .filter(({r, c}) => this.grid[r] && this.grid[r][c] && this.grid[r][c].type !== 'stone')
+      .map(({r, c}) => this.grid[r][c].type);
+    const colorTypes = this.bubbleTypes.filter(t => t !== 'stone');
+    const availableColors = colorTypes.filter(type => !neighborColors.includes(type));
+    if (availableColors.length > 0) {
+      return availableColors[Math.floor(Math.random() * availableColors.length)];
+    }
+    return colorTypes[Math.floor(Math.random() * colorTypes.length)];
+  }
+
+  // Стратегічний вибір (базується на кульці гравця)
+  getStrategicBubbleType() {
+    if (this.shootingBubble) {
+      const currentType = this.shootingBubble.type;
+      if (currentType === 'stone') return this.getBalancedBubbleType();
+      if (Math.random() < 0.4) {
+        return currentType;
+      }
+      if (Math.random() < 0.3) {
+        return this.getBalancedBubbleType();
+      }
+    }
+    const colorTypes = this.bubbleTypes.filter(t => t !== 'stone');
+    return colorTypes[Math.floor(Math.random() * colorTypes.length)];
+  }
+
+  // Адаптивний вибір (базується на складності)
+  getAdaptiveBubbleType(row, col) {
+    const difficultyFactor = Math.min(this.difficulty * this.difficultyMultiplier, 5);
+    if (difficultyFactor < 2) {
+      return this.getBalancedBubbleType();
+    } else if (difficultyFactor < 3) {
+      return Math.random() < Math.min(0.8 * this.difficultyMultiplier, 1) ? this.getBalancedBubbleType() : this.getClusteredBubbleType(row, col);
+    } else if (difficultyFactor < 4) {
+      return Math.random() < Math.min(0.8 * this.difficultyMultiplier, 1) ? this.getClusteredBubbleType(row, col) : this.getChallengingBubbleType(row, col);
+    } else {
+      // Максимальна складність
+      const strategies = ['challenging', 'strategic', 'clustered'];
+      const strategy = strategies[Math.floor(Math.random() * strategies.length)];
+      return this.getSmartBubbleType(row, col, strategy);
+    }
+  }
+
+  // Отримати сусідів клітинки
+  getNeighbors(row, col) {
+    const isEvenRow = row % 2 === 0;
+    return [
+      {r: row-1, c: isEvenRow ? col-1 : col},
+      {r: row-1, c: isEvenRow ? col : col+1},
+      {r: row, c: col-1},
+      {r: row, c: col+1},
+      {r: row+1, c: isEvenRow ? col-1 : col},
+      {r: row+1, c: isEvenRow ? col : col+1}
+    ].filter(({r, c}) => r >= 0 && r < this.rows && c >= 0 && c < this.cols);
+  }
+
+  // Оновити розподіл кольорів
+  updateColorDistribution() {
+    this.colorDistribution.clear();
+    
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        if (this.grid[row][col]) {
+          const type = this.grid[row][col].type;
+          this.colorDistribution.set(type, (this.colorDistribution.get(type) || 0) + 1);
+        }
+      }
+    }
+  }
+
+  // Динамічне підвищення складності
+  updateDifficulty() {
+    const baseScore = this.score;
+    const newDifficulty = Math.floor(baseScore / 1000) + 1; // Кожні 1000 очок = +1 складність
+    
+    // Додаткова складність за послідовні влучення
+    if (this.consecutiveHits >= 5) {
+      this.difficulty = Math.max(this.difficulty, newDifficulty + 1);
+    } else {
+      this.difficulty = newDifficulty;
+    }
+    
+    // Обмежуємо максимальну складність
+    this.difficulty = Math.min(this.difficulty, 6);
+  }
+
+  // Генерація спеціальних патернів
+  generateSpecialPattern() {
+    if (Math.random() > Math.max(0.3 * this.difficultyMultiplier, 1)) return;
+    const patterns = ['wall', 'pyramid', 'checker', 'threat', 'stoneRow'];
+    let availablePatterns = patterns.filter(p => p !== this.lastPatternType);
+    if (availablePatterns.length === 0) {
+      availablePatterns = patterns;
+    }
+    const pattern = availablePatterns[Math.floor(Math.random() * availablePatterns.length)];
+    this.lastPatternType = pattern;
+    switch (pattern) {
+      case 'wall':
+        this.generateWallPattern();
+        break;
+      case 'pyramid':
+        this.generatePyramidPattern();
+        break;
+      case 'checker':
+        this.generateCheckerPattern();
+        break;
+      case 'threat':
+        this.generateThreatPattern();
+        break;
+      case 'stoneRow':
+        this.generateStoneThreatRow();
+        break;
+    }
+  }
+
+  generateWallPattern() {
+    // Створюємо стіну з одного кольору в центрі
+    const startCol = Math.floor(this.cols * 0.3);
+    const endCol = Math.floor(this.cols * 0.7);
+    const wallColor = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
+    
+    for (let col = startCol; col < endCol; col++) {
+      this.grid[0][col] = {
+        type: wallColor,
+        row: 0,
+        col: col
+      };
+    }
+  }
+
+  generatePyramidPattern() {
+    // Створюємо піраміду з центру
+    const centerCol = Math.floor(this.cols / 2);
+    const pyramidColor = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
+    
+    // Центральна кулька
+    this.grid[0][centerCol] = {
+      type: pyramidColor,
+      row: 0,
+      col: centerCol
+    };
+    
+    // Бокові кульки
+    if (centerCol > 0) {
+      this.grid[0][centerCol - 1] = {
+        type: pyramidColor,
+        row: 0,
+        col: centerCol - 1
+      };
+    }
+    if (centerCol < this.cols - 1) {
+      this.grid[0][centerCol + 1] = {
+        type: pyramidColor,
+        row: 0,
+        col: centerCol + 1
+      };
+    }
+  }
+
+  generateCheckerPattern() {
+    // Шахова дошка з двох кольорів
+    const color1 = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
+    let color2 = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
+    while (color2 === color1) {
+      color2 = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
+    }
+    
+    for (let col = 0; col < this.cols; col++) {
+      const color = col % 2 === 0 ? color1 : color2;
+      this.grid[0][col] = {
+        type: color,
+        row: 0,
+        col: col
+      };
+    }
+  }
+
+  generateThreatPattern() {
+    // Створюємо загрозливий патерн - кульки близько до середини знизу
+    const dangerousColors = this.bubbleTypes.slice(); // Копія всіх кольорів
+    const centerStart = Math.floor(this.cols * 0.25);
+    const centerEnd = Math.floor(this.cols * 0.75);
+    
+    for (let col = centerStart; col < centerEnd; col++) {
+      if (Math.random() < 0.8) { // 80% шанс
+        const color = dangerousColors[Math.floor(Math.random() * dangerousColors.length)];
+        this.grid[0][col] = {
+          type: color,
+          row: 0,
+          col: col
+        };
+      }
+    }
+  }
+
+  generateStoneThreatRow() {
+    // Ряд з каменями та одним кольором
+    const color = this.bubbleTypes[Math.floor(Math.random() * (this.bubbleTypes.length - 1))];
+    for (let col = 0; col < this.cols; col++) {
+      this.grid[0][col] = {
+        type: Math.random() < 0.6 ? 'stone' : color,
+        row: 0,
+        col: col
+      };
     }
   }
 
@@ -374,18 +711,17 @@ export class BubbleShooterGame {
 
   updateParticles(deltaTime) {
     this.particles = this.particles.filter(p => {
-      // Плавний рух з використанням deltaTime
-      p.x += p.dx * deltaTime * 60; // 60 FPS baseline
+      p.x += p.dx * deltaTime * 60;
       p.y += p.dy * deltaTime * 60;
       p.life -= p.decay * deltaTime * 60;
-      
       if (p.life > 0) {
+        this.ctx.save();
+        this.ctx.globalAlpha = p.life;
         this.ctx.beginPath();
         this.ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
         this.ctx.fillStyle = p.color;
-        this.ctx.globalAlpha = p.life;
         this.ctx.fill();
-        this.ctx.globalAlpha = 1;
+        this.ctx.restore();
         return true;
       }
       return false;
@@ -393,7 +729,15 @@ export class BubbleShooterGame {
   }
 
   spawnShootingBubble() {
-    const type = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
+    // stone не може бути для стрільця
+    let type;
+    const colorTypes = this.bubbleTypes.filter(t => t !== 'stone');
+    if (Math.random() < 0.6 && this.colorDistribution.size > 0) {
+      const availableColors = Array.from(this.colorDistribution.keys()).filter(t => t !== 'stone');
+      type = availableColors[Math.floor(Math.random() * availableColors.length)];
+    } else {
+      type = colorTypes[Math.floor(Math.random() * colorTypes.length)];
+    }
     this.shootingBubble = {
       type,
       x: this.canvas.width / 2,
@@ -424,13 +768,17 @@ export class BubbleShooterGame {
   }
 
   shoot(e) {
-    if (this.shootingBubble.moving) return;
+    if (this.shootingBubble.moving || this.isPaused || this.isGameOver) return;
     
     this.playSound('shoot');
-    const BUBBLE_SPEED = 780; // Збільшено на 30% для швидшого польоту
-    // Shoot in the direction of aim, but invert Y velocity for upward motion
-    this.shootingBubble.dx = Math.cos(this.shootingAngle) * BUBBLE_SPEED;
-    this.shootingBubble.dy = -Math.sin(Math.abs(this.shootingAngle)) * BUBBLE_SPEED;
+    
+    // Оновлюємо лічильники
+    this.shotsCount++;
+    this.updateDifficulty();
+    
+    const speed = 850; // Збільшуємо швидкість з 780 до 850 для кращого відчуття
+    this.shootingBubble.dx = Math.cos(this.shootingAngle) * speed;
+    this.shootingBubble.dy = -Math.sin(Math.abs(this.shootingAngle)) * speed; // Negative for upward movement
     this.shootingBubble.moving = true;
   }
 
@@ -441,29 +789,56 @@ export class BubbleShooterGame {
     this.lastTime = 0;
     if (this.gameMode === 'timed') {
       this.timeLeft = 60;
-      this.dropTimer = 9; // Таймер для опускання кульок
+      this.dropTimer = 10;
       this.updateTimer();
+    }
+    // === Додаємо таймер складності для endless ===
+    if (this.gameMode === 'endless') {
+      this.difficultyMultiplier = 1;
+      if (this.difficultyInterval) clearInterval(this.difficultyInterval);
+      this.difficultyInterval = setInterval(() => {
+        this.difficultyMultiplier = Math.min(this.difficultyMultiplier * 1.5, 10);
+        // Можна показати повідомлення або анімацію про підвищення складності
+      }, 20000);
+      if (this.threatRowTimer) clearInterval(this.threatRowTimer);
+      this.threatRowTimer = setInterval(() => {
+        this.generateStoneThreatRow();
+      }, 35000); // кожні 35 секунд
     }
     this.updateScore();
     requestAnimationFrame((time) => this.loop(time));
+
+    // Зупиняємо музику головного меню
+    if (this.menuMusic && !this.menuMusic.paused) {
+      this.menuMusic.pause();
+      this.menuMusic.currentTime = 0;
+    }
+
+    const timestamp = Date.now();
+    document.body.setAttribute('style', `background: url('/menu-bg.png?v=${timestamp}') center center / cover no-repeat fixed !important;`);
   }
 
   loop(currentTime) {
     if (this.isPaused || this.isGameOver) return;
-
     if (!this.lastTime) this.lastTime = currentTime;
     const deltaTime = (currentTime - this.lastTime) / 1000;
     this.lastTime = currentTime;
-
+    // FPS
+    this.frameCounter++;
+    if (currentTime - this.lastFpsUpdate > 1000) {
+      this.fps = this.frameCounter;
+      this.frameCounter = 0;
+      this.lastFpsUpdate = currentTime;
+    }
+    // Game mode logic
     if (this.gameMode === 'timed') {
       this.timeLeft -= deltaTime;
       this.dropTimer -= deltaTime;
       this.updateTimer();
       
-      // Опускаємо кульки кожні 9 секунд
       if (this.dropTimer <= 0) {
         this.dropBubblesOneRow();
-        this.dropTimer = 9; // Скидаємо таймер
+        this.dropTimer = 10;
       }
       
       if (this.timeLeft <= 0) {
@@ -472,28 +847,46 @@ export class BubbleShooterGame {
       }
     }
     
+    // Update explosion animations with optimized deltaTime
     if (this.explodingBubbles.length > 0) {
-      for (const b of this.explodingBubbles) {
-        b.progress += deltaTime * 4.8; // Плавна анімація вибуху
-        if (b.progress < 0.1) {
+      const explosionSpeed = deltaTime * 5.0; // Прискорюємо анімацію
+      
+      for (let i = this.explodingBubbles.length - 1; i >= 0; i--) {
+        const b = this.explodingBubbles[i];
+        b.progress += explosionSpeed;
+        
+        // Create particles only once at start
+        if (b.progress < 0.15 && !b.particlesCreated) {
           const {x, y} = this.gridToPixel(b.row, b.col);
-          this.createParticles(x, y, b.type, 8);
+          this.createParticles(x, y, b.type, 6); // Fewer particles for performance
+          b.particlesCreated = true;
         }
-      }
-      if (this.explodingBubbles[0].progress >= 1) {
-        for (const b of this.explodingBubbles) {
+        
+        // Remove completed explosions immediately
+        if (b.progress >= 1) {
           this.grid[b.row][b.col] = null;
+          this.updateActiveBubblesCache(b.row, b.col, null); // Update cache
+          this.explodingBubbles.splice(i, 1);
         }
-        this.explodingBubbles = [];
       }
     }
     
+    // Clear canvas once per frame
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // Optimized render calls
     this.drawGrid();
     this.drawShootingBubble();
     this.drawAimLine();
+    
+    // Update systems
     this.updateShootingBubble(deltaTime);
     this.updateParticles(deltaTime);
+    
+    // Draw FPS
+    this.drawFPS();
+    
+    // Next frame
     requestAnimationFrame((time) => this.loop(time));
   }
 
@@ -515,7 +908,7 @@ export class BubbleShooterGame {
             const { x, y } = this.gridToPixel(row, col);
             this.drawBubbleAnimated(x, y, bubble.type, exploding.progress);
           } else {
-            const { x, y } = this.gridToPixel(row, col);
+          const { x, y } = this.gridToPixel(row, col);
             this.drawBubble(x, y, bubble.type);
           }
         }
@@ -525,44 +918,38 @@ export class BubbleShooterGame {
 
   drawBubble(x, y, type) {
     this.ctx.save();
-    
-    // Enable image smoothing for better quality
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = 'high';
-    
-    // Draw shadow
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
     this.ctx.shadowBlur = 10;
     this.ctx.shadowOffsetY = 3;
-    
-    // Draw white circle background
     this.ctx.beginPath();
     this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
     this.ctx.fillStyle = 'white';
     this.ctx.fill();
-    
-    // Create clipping path for the sprite
     this.ctx.beginPath();
     this.ctx.arc(x, y, this.bubbleRadius - 2, 0, Math.PI * 2);
     this.ctx.clip();
-    
-    // Draw the bubble image with proper size
-    const img = this.bubbleImages[type];
-    if (img) {
-      // Draw the sprite slightly smaller than the bubble radius
-      const spriteSize = this.bubbleRadius * 1.8; // Reduced size to ensure it fits inside
-      this.ctx.drawImage(
-        img,
-        x - spriteSize / 2,
-        y - spriteSize / 2,
-        spriteSize,
-        spriteSize
-      );
+    if (type === 'stone') {
+      // Малюємо чорний круг
+      this.ctx.fillStyle = '#111';
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, this.bubbleRadius - 3, 0, Math.PI * 2);
+      this.ctx.fill();
+    } else {
+      const img = this.bubbleImages[type];
+      if (img) {
+        const spriteSize = this.bubbleRadius * 1.8;
+        this.ctx.drawImage(
+          img,
+          x - spriteSize / 2,
+          y - spriteSize / 2,
+          spriteSize,
+          spriteSize
+        );
+      }
     }
-    
     this.ctx.restore();
-    
-    // Draw a subtle border
     this.ctx.beginPath();
     this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
     this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
@@ -572,76 +959,35 @@ export class BubbleShooterGame {
 
   drawBubbleAnimated(x, y, type, progress) {
     this.ctx.save();
-    this.ctx.globalAlpha = 1 - progress;
-    this.ctx.translate(x, y);
-    const scale = 1 - progress;
-    this.ctx.scale(scale, scale);
-    
-    // Enable image smoothing for better quality
-    this.ctx.imageSmoothingEnabled = true;
-    this.ctx.imageSmoothingQuality = 'high';
-    
-    // Draw shadow
-    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-    this.ctx.shadowBlur = 10;
-    this.ctx.shadowOffsetY = 3;
-    
-    // Draw white circle background
-    this.ctx.beginPath();
-    this.ctx.arc(0, 0, this.bubbleRadius, 0, Math.PI * 2);
-    this.ctx.fillStyle = 'white';
-    this.ctx.fill();
-    
-    // Create clipping path for the sprite
-    this.ctx.beginPath();
-    this.ctx.arc(0, 0, this.bubbleRadius - 2, 0, Math.PI * 2);
-    this.ctx.clip();
-    
-    // Draw the bubble image
-    const img = this.bubbleImages[type];
-    if (img) {
-      // Draw the sprite slightly smaller than the bubble radius
-      const spriteSize = this.bubbleRadius * 1.8;
-      this.ctx.drawImage(
-        img,
-        -spriteSize / 2,
-        -spriteSize / 2,
-        spriteSize,
-        spriteSize
-      );
-    }
-    
-    this.ctx.restore();
-    
-    // Draw a subtle border
-    this.ctx.save();
-    this.ctx.globalAlpha = 1 - progress;
+    // Easing: scale та opacity
+    const scale = 1 + 0.5 * Math.sin(Math.PI * progress);
+    const alpha = 1 - progress;
+    this.ctx.globalAlpha = alpha;
     this.ctx.translate(x, y);
     this.ctx.scale(scale, scale);
-    this.ctx.beginPath();
-    this.ctx.arc(0, 0, this.bubbleRadius, 0, Math.PI * 2);
-    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-    this.ctx.lineWidth = 1;
-    this.ctx.stroke();
+    this.ctx.translate(-x, -y);
+    this.drawBubble(x, y, type);
     this.ctx.restore();
   }
 
   gridToPixel(row, col) {
     const evenRow = row % 2 === 0;
-    const x = this.sidePadding + (evenRow ? 0 : this.bubbleRadius) + col * this.bubbleRadius * 2;
-    const y = row * this.bubbleRadius * 1.8 + this.bubbleRadius;
+    const bubbleSpacing = this.bubbleRadius * 2.1; // Збільшуємо простір між кульками
+    const x = this.sidePadding + (evenRow ? 0 : this.bubbleRadius) + col * bubbleSpacing;
+    const y = row * this.bubbleRadius * 1.9 + this.bubbleRadius + 20; // Більший вертикальний простір
     return { x, y };
   }
 
   pixelToGrid(x, y) {
-    const row = Math.floor((y - this.bubbleRadius) / (this.bubbleRadius * 1.8));
+    const bubbleSpacing = this.bubbleRadius * 2.1;
+    const row = Math.floor((y - this.bubbleRadius - 20) / (this.bubbleRadius * 1.9));
     const evenRow = row % 2 === 0;
-    const col = Math.floor((x - this.sidePadding - (evenRow ? 0 : this.bubbleRadius)) / (this.bubbleRadius * 2));
+    const col = Math.floor((x - this.sidePadding - (evenRow ? 0 : this.bubbleRadius)) / bubbleSpacing);
     return { row, col };
   }
 
   drawShootingBubble() {
-    if (!this.shootingBubble) return;
+    if (this.isGameOver || !this.shootingBubble) return;
     
     this.ctx.save();
     if (this.shootingBubble.moving) {
@@ -682,16 +1028,11 @@ export class BubbleShooterGame {
   }
 
   updateShootingBubble(deltaTime) {
-    if (!this.shootingBubble.moving) return;
-    
-    // Store previous position
+    if (!this.shootingBubble || this.isGameOver) return;
     const prevX = this.shootingBubble.x;
     const prevY = this.shootingBubble.y;
-
-    // Move the bubble using deltaTime
     this.shootingBubble.x += this.shootingBubble.dx * deltaTime;
     this.shootingBubble.y += this.shootingBubble.dy * deltaTime;
-
     // Calculate boundaries with proper spacing
     const gridWidth = this.cols * (this.bubbleRadius * 2 + 6);
     const padding = (this.playAreaWidth - gridWidth) / 2 + this.sidePadding;
@@ -709,54 +1050,73 @@ export class BubbleShooterGame {
     if (this.shootingBubble.y <= this.bubbleRadius) {
       const col = Math.round((this.shootingBubble.x - this.bubbleRadius - padding) / (this.bubbleRadius * 2));
       
-      // Перевіряємо чи є місце в верхньому ряду
       if (col >= 0 && col < this.cols && !this.grid[0][col]) {
         this.attachBubbleToGrid(0, col);
       } else {
-        // Якщо немає місця в верхньому ряду - програш
         this.gameOver();
       }
       return;
     }
 
-    // Check collision with other bubbles
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        if (this.grid[row][col]) {
-          const {x, y} = this.gridToPixel(row, col);
+    // OPTIMIZED: Use new collision detection system
+    const collision = this.checkCollisionOptimized(this.shootingBubble.x, this.shootingBubble.y, prevX, prevY);
+    if (collision) {
+      // Знаходимо всі сусідні клітинки навколо точки зіткнення
+      const neighborOffsets = [
+        {dr: 1, dc: 0},
+        {dr: 1, dc: -1},
+        {dr: 1, dc: 1},
+        {dr: 0, dc: -1},
+        {dr: 0, dc: 1},
+        {dr: -1, dc: 0}
+      ];
+      const isEvenRow = collision.row % 2 === 0;
+      const neighborCoords = [
+        {row: collision.row + 1, col: collision.col},
+        {row: collision.row + 1, col: isEvenRow ? collision.col - 1 : collision.col + 1},
+        {row: collision.row, col: collision.col - 1},
+        {row: collision.row, col: collision.col + 1},
+        {row: collision.row - 1, col: collision.col},
+        {row: collision.row - 1, col: isEvenRow ? collision.col - 1 : collision.col + 1}
+      ];
+      // Знаходимо найближчу вільну клітинку
+      let minDist = Infinity;
+      let bestPos = null;
+      for (const pos of neighborCoords) {
+        if (
+          pos.row >= 0 && pos.row < this.rows &&
+          pos.col >= 0 && pos.col < this.cols &&
+          !this.grid[pos.row][pos.col]
+        ) {
+          const {x, y} = this.gridToPixel(pos.row, pos.col);
           const dx = this.shootingBubble.x - x;
           const dy = this.shootingBubble.y - y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          
-          if (distance < this.bubbleRadius * 2) {
-            // Find the nearest empty spot
-            const possiblePositions = [
-              {row: row + 1, col: col},
-              {row: row + 1, col: col - 1},
-              {row: row + 1, col: col + 1},
-              {row: row, col: col - 1},
-              {row: row, col: col + 1},
-              {row: row - 1, col: col}
-            ];
-
-            let foundValidPosition = false;
-            for (const pos of possiblePositions) {
-              if (pos.row >= 0 && pos.row < this.rows && 
-                  pos.col >= 0 && pos.col < this.cols && 
-                  !this.grid[pos.row][pos.col]) {
-                this.attachBubbleToGrid(pos.row, pos.col);
-                foundValidPosition = true;
-                return;
-              }
-            }
-            
-            // Якщо не знайдено жодної валідної позиції - програш
-            if (!foundValidPosition) {
-              this.gameOver();
-              return;
-            }
+          const dist = dx * dx + dy * dy;
+          if (dist < minDist) {
+            minDist = dist;
+            bestPos = pos;
           }
         }
+      }
+      if (bestPos) {
+        this.attachBubbleToGrid(bestPos.row, bestPos.col);
+        return;
+      } else {
+        // Якщо немає вільного місця серед сусідів — шукаємо найнижчу вільну клітинку у цій колонці
+        let fallbackRow = null;
+        for (let row = this.rows - 1; row >= 0; row--) {
+          if (!this.grid[row][collision.col]) {
+            fallbackRow = row;
+            break;
+          }
+        }
+        if (fallbackRow !== null) {
+          this.attachBubbleToGrid(fallbackRow, collision.col);
+          return;
+        }
+        this.gameOver();
+        this.shootingBubble = null;
+        return;
       }
     }
 
@@ -768,21 +1128,18 @@ export class BubbleShooterGame {
 
   attachBubbleToGrid(hitRow, hitCol) {
     if (hitRow >= 0 && hitRow < this.rows && hitCol >= 0 && hitCol < this.cols) {
-      // Дозволяємо кулькам опускатися майже до стрільця
-      // Залишаємо мінімальну відстань між останніми кульками і стрільцем
-      const {y} = this.gridToPixel(hitRow, hitCol);
-      const minDistanceToShooter = this.bubbleRadius * 0.2; // Дуже мала відстань до стрільця
-      if (y + this.bubbleRadius >= this.shooterY - minDistanceToShooter) {
+      if (hitRow >= this.rows - this.allowedBottomRows) {
         this.gameOver();
+        this.shootingBubble = null;
         return;
       }
-
       this.grid[hitRow][hitCol] = {
         type: this.shootingBubble.type,
         row: hitRow,
         col: hitCol
       };
-      
+      // Оновлюємо кеш для оптимізації FPS
+      this.updateActiveBubblesCache(hitRow, hitCol, this.grid[hitRow][hitCol]);
       const matches = this.findAndRemoveGroups(hitRow, hitCol);
       if (matches.length >= 3) {
         this.playSound('pop');
@@ -790,19 +1147,27 @@ export class BubbleShooterGame {
         if (matches.length === 3) points = 30;
         else if (matches.length === 4) points = 50;
         else if (matches.length >= 5) points = 100;
-        
         this.score += points;
+        // Оновлюємо лічильники
+        this.consecutiveHits++;
+        this.updateDifficulty();
         this.updateScore();
-        
         // Додаємо рандомний ефект вибуху
         matches.forEach(match => {
           match.explosionDelay = Math.random() * 0.2;
+          match.particlesCreated = false; // Для оптимізації
+          // Видаляємо тільки ці кульки з grid
+          this.grid[match.row][match.col] = null;
+          this.updateActiveBubblesCache(match.row, match.col, null);
         });
-        
         this.explodingBubbles = matches;
         this.checkFloatingBubbles();
+      } else {
+        // Reset consecutive hits if no match
+        this.consecutiveHits = 0;
       }
-      
+      // Оновлюємо розподіл кольорів
+      this.updateColorDistribution();
       this.spawnShootingBubble();
     }
   }
@@ -908,13 +1273,16 @@ export class BubbleShooterGame {
   }
 
   removeFloatingBubbles() {
-    // This method is now deprecated, using checkFloatingBubbles instead
+    // stone падає як звичайна кулька
     this.checkFloatingBubbles();
   }
 
   gameOver() {
     this.isGameOver = true;
     this.playSound('game-over');
+    this.shootingBubble = null;
+    if (this.difficultyInterval) clearInterval(this.difficultyInterval);
+    if (this.threatRowTimer) clearInterval(this.threatRowTimer);
     
     // Зберігаємо результат в лідерборд з інформацією про режим
     if (typeof window.saveToLeaderboard === 'function') {
@@ -948,29 +1316,8 @@ export class BubbleShooterGame {
 
   // Функція для опускання всіх кульок на один ряд вниз
   dropBubblesOneRow() {
-    // СПОЧАТКУ перевіряємо чи можуть ВСІ кульки безпечно опуститися на один рівень
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        if (this.grid[row][col]) {
-          // Обчислюємо де буде кулька після опускання на один рівень
-          const newRow = row + 1;
-          if (newRow < this.rows) {
-            const {y} = this.gridToPixel(newRow, col);
-            const minDistanceToShooter = this.bubbleRadius * 0.2;
-            // Якщо кулька після опускання досягне критичного рівня - програш
-            if (y + this.bubbleRadius >= this.shooterY - minDistanceToShooter) {
-              this.gameOver();
-              return; // Виходимо без опускання кульок
-            }
-          }
-        }
-      }
-    }
-
-    // Якщо перевірка пройшла успішно - опускаємо ВСІ кульки на один рівень
+    // Зсуваємо всі ряди вниз на 1, не ущільнюючи кульки
     const lastRow = this.rows - 1;
-    
-    // Опускаємо всі кульки на один ряд вниз
     for (let row = lastRow; row > 0; row--) {
       for (let col = 0; col < this.cols; col++) {
         this.grid[row][col] = this.grid[row - 1][col];
@@ -979,37 +1326,99 @@ export class BubbleShooterGame {
         }
       }
     }
-
     // Очищаємо перший ряд
     for (let col = 0; col < this.cols; col++) {
       this.grid[0][col] = null;
     }
-
-    // Створюємо новий ряд кульок зверху (тепер це безпечно)
-    for (let col = 0; col < this.cols; col++) {
-      const type = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
-      this.grid[0][col] = {
-        type,
-        row: 0,
-        col
-      };
+    this.bubbleGenerationCounter++;
+    if (this.bubbleGenerationCounter % 5 === 0) {
+      this.generateSpecialPattern();
+    } else {
+      for (let col = 0; col < this.cols; col++) {
+        const bubbleType = this.getSmartBubbleType(0, col, 'adaptive');
+        this.grid[0][col] = {
+          type: bubbleType,
+          row: 0,
+          col: col
+        };
+      }
     }
+    this.updateColorDistribution();
+    this.rebuildActiveBubblesCache();
   }
 
   // Нова функція для перевірки завершення гри
   checkGameOver() {
+    // Видалено перевірку програшу по shooterY
+    return false;
+  }
+
+  // Cache management for optimized collision detection
+  updateActiveBubblesCache(row, col, bubble) {
+    const key = `${row},${col}`;
+    if (bubble === null) {
+      this.activeBubbles.delete(key);
+    } else {
+      const {x, y} = this.gridToPixel(row, col);
+      this.activeBubbles.set(key, {x, y, type: bubble.type, row, col});
+    }
+  }
+  
+  rebuildActiveBubblesCache() {
+    this.activeBubbles.clear();
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
         if (this.grid[row][col]) {
-          const {y} = this.gridToPixel(row, col);
-          const minDistanceToShooter = this.bubbleRadius * 0.2;
-          if (y + this.bubbleRadius >= this.shooterY - minDistanceToShooter) {
-            this.gameOver();
-            return true; // Повертаємо true якщо гра закінчена
-          }
+          this.updateActiveBubblesCache(row, col, this.grid[row][col]);
         }
       }
     }
-    return false; // Гра продовжується
+  }
+  
+  // Optimized collision detection using spatial partitioning
+  checkCollisionOptimized(bubbleX, bubbleY, prevX = null, prevY = null) {
+    // Якщо prevX/prevY не задані — перевіряємо лише поточну позицію (старий режим)
+    if (prevX === null || prevY === null) {
+      const searchRadius = this.bubbleRadius * 2.2;
+      for (const [key, activeBubble] of this.activeBubbles) {
+        const dx = bubbleX - activeBubble.x;
+        const dy = bubbleY - activeBubble.y;
+        if (Math.abs(dx) > searchRadius || Math.abs(dy) > searchRadius) continue;
+        const distanceSquared = dx * dx + dy * dy;
+        const collisionDistanceSquared = (this.bubbleRadius * 2) * (this.bubbleRadius * 2);
+        if (distanceSquared < collisionDistanceSquared) {
+          return activeBubble;
+        }
+      }
+      return null;
+    }
+    // RAYCAST: перевіряємо колізію по всій траєкторії між prevX,prevY і bubbleX,bubbleY
+    const steps = Math.ceil(Math.max(Math.abs(bubbleX - prevX), Math.abs(bubbleY - prevY)) / (this.bubbleRadius / 2));
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const x = prevX + (bubbleX - prevX) * t;
+      const y = prevY + (bubbleY - prevY) * t;
+      const searchRadius = this.bubbleRadius * 2.2;
+      for (const [key, activeBubble] of this.activeBubbles) {
+        const dx = x - activeBubble.x;
+        const dy = y - activeBubble.y;
+        if (Math.abs(dx) > searchRadius || Math.abs(dy) > searchRadius) continue;
+        const distanceSquared = dx * dx + dy * dy;
+        const collisionDistanceSquared = (this.bubbleRadius * 2) * (this.bubbleRadius * 2);
+        if (distanceSquared < collisionDistanceSquared) {
+          return activeBubble;
+        }
+      }
+    }
+    return null;
+  }
+
+  // FPS лічильник
+  drawFPS() {
+    this.ctx.save();
+    this.ctx.font = '16px Arial';
+    this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    this.ctx.fillText(`FPS: ${this.fps}`, 10, 22);
+    this.ctx.restore();
   }
 } 

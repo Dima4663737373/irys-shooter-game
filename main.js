@@ -30,8 +30,42 @@ function saveToLeaderboard(score, gameMode = 'endless') {
 window.saveToLeaderboard = saveToLeaderboard;
 
 function showMainMenu() {
+  const timestamp = Date.now();
+  console.log('showMainMenu: Setting background with timestamp:', timestamp);
+  
+  // Видаляємо старий стиль
+  const existingStyle = document.getElementById('menu-bg-style');
+  if (existingStyle) existingStyle.remove();
+  
+  // Створюємо новий CSS з псевдоелементом
+  const style = document.createElement('style');
+  style.id = 'menu-bg-style';
+  style.textContent = `
+    /* Блокуємо існуючі псевдоелементи */
+    body:before, body::before { 
+      display: none !important; 
+    }
+    body:after, body::after { 
+      display: none !important; 
+    }
+    
+    /* Встановлюємо наш фон */
+    body {
+      background: url('/menu-bg.jpg?v=${timestamp}') center center / cover no-repeat fixed !important;
+    }
+  `;
+  document.head.appendChild(style);
+  
+  console.log('showMainMenu: Added CSS style for background');
   app.innerHTML = `
-    <div class="main-menu">
+    <div class="main-menu" style="
+      min-height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);">
       <h1 style="animation: bounceIn 1s ease-out;">🎯 Irys Shooter</h1>
       <button id="play-btn" style="animation: slideInLeft 0.6s ease-out 0.3s both;">🎮 Play</button>
       <button id="leaderboard-btn" style="animation: slideInUp 0.6s ease-out 0.5s both;">🏆 Leaderboard</button>
@@ -72,12 +106,20 @@ function showMainMenu() {
 }
 
 function showGame() {
+  // Видаляємо фон меню
+  const existingStyle = document.getElementById('menu-bg-style');
+  if (existingStyle) existingStyle.remove();
+  
   app.innerHTML = `<div class="game-canvas"></div>`;
   window.showMainMenu = showMainMenu;
   new BubbleShooterGame(document.querySelector('.game-canvas'));
 }
 
 function showLeaderboard() {
+  // Видаляємо фон меню
+  const existingStyle = document.getElementById('menu-bg-style');
+  if (existingStyle) existingStyle.remove();
+  
   const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
   let tableRows = leaderboard.map((entry, idx) => `
     <tr style="border-bottom:1px solid #e0e6ed;">
@@ -120,6 +162,10 @@ function showLeaderboard() {
 }
 
 function showSettings() {
+  // Видаляємо фон меню
+  const existingStyle = document.getElementById('menu-bg-style');
+  if (existingStyle) existingStyle.remove();
+  
   const savedName = localStorage.getItem('playerName') || '';
   app.innerHTML = `
     <div class="settings" style="background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); border-radius:24px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); padding:48px 32px; text-align:center; max-width:340px; margin:0 auto;">
