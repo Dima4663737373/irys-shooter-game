@@ -136,7 +136,7 @@ function showLeaderboard() {
     tableRows = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#999; font-style:italic;">No results yet</td></tr>';
   }
   app.innerHTML = `
-    <div class="leaderboard" style="background:rgba(255,255,255,0.2); backdrop-filter:blur(3px); border:1px solid rgba(255,255,255,0.3); border-radius:18px; box-shadow:0 16px 48px rgba(0,0,0,0.2); padding:36px 32px; text-align:center; max-width:580px; margin:0 auto;">
+    <div class="leaderboard" style="background:#ffffff; border:2px solid #43cea2; border-radius:18px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(67,206,162,0.2); padding:36px 32px; text-align:center; max-width:580px; margin:0 auto;">
       <h2 style="font-size:2rem; color:#111; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🏆 Leaderboard</h2>
       <table style="width:100%; border-collapse:collapse; margin:24px 0; font-size:1.1rem;">
         <thead>
@@ -170,7 +170,7 @@ function showSettings() {
   
   const savedName = localStorage.getItem('playerName') || '';
   app.innerHTML = `
-    <div class="settings" style="background:rgba(255,255,255,0.2); backdrop-filter:blur(3px); border:1px solid rgba(255,255,255,0.3); border-radius:24px; box-shadow:0 16px 48px rgba(0,0,0,0.2); padding:48px 32px; text-align:center; max-width:340px; margin:0 auto;">
+    <div class="settings" style="background:#ffffff; border:2px solid #43cea2; border-radius:24px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(67,206,162,0.2); padding:48px 32px; text-align:center; max-width:340px; margin:0 auto;">
       <h2 style="font-size:2rem; color:#2193b0; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">⚙️ Settings</h2>
       <form id="settings-form">
         <label for="player-name" style="font-size:1.1rem; color:#185a9d;">Player Name:</label><br>
