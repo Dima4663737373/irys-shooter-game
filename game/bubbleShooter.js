@@ -182,21 +182,11 @@ export class BubbleShooterGame {
     }
   }
 
-  // Функція для плавних переходів в грі
+  // Функція для швидких переходів в грі БЕЗ fade ефектів
   smoothGameTransition(newContent, callback = null) {
-    // Fade out
-    this.container.style.opacity = '0';
-    
-    setTimeout(() => {
-      // Змінюємо контент
-      this.container.innerHTML = newContent;
-      
-      // Fade in
-      setTimeout(() => {
-        this.container.style.opacity = '1';
-        if (callback) callback();
-      }, 50);
-    }, 300);
+    // Миттєва заміна контенту без затримок
+    this.container.innerHTML = newContent;
+    if (callback) callback();
   }
 
   showModeSelection() {

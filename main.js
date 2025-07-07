@@ -40,7 +40,9 @@ function setGlobalBackground() {
 function smoothTransition(newContent) {
   const app = document.getElementById('app');
   
-  // Швидкий перехід без fade out
+  // Миттєва заміна контенту без будь-яких ефектів
+  app.style.transition = 'none';
+  app.style.opacity = '1';
   app.innerHTML = newContent;
 }
 
@@ -186,15 +188,14 @@ function showLeaderboard() {
   `;
   smoothTransition(content);
   
-  setTimeout(() => {
-    document.getElementById('back-menu').onclick = showMainMenu;
-    document.getElementById('clear-leaderboard').onclick = function() {
-      if (confirm('Are you sure you want to clear the leaderboard?')) {
-        localStorage.removeItem('bubbleLeaderboard');
-        showLeaderboard();
-      }
-    };
-  }, 350);
+  // Додаємо event listeners відразу без затримки
+  document.getElementById('back-menu').onclick = showMainMenu;
+  document.getElementById('clear-leaderboard').onclick = function() {
+    if (confirm('Are you sure you want to clear the leaderboard?')) {
+      localStorage.removeItem('bubbleLeaderboard');
+      showLeaderboard();
+    }
+  };
 }
 
 function showSettings() {
@@ -218,20 +219,30 @@ function showSettings() {
   `;
   smoothTransition(content);
   
-  setTimeout(() => {
-    document.getElementById('back-menu').onclick = showMainMenu;
-    document.getElementById('settings-form').onsubmit = function(e) {
-      e.preventDefault();
-      const name = document.getElementById('player-name').value.trim();
-      if (name.length === 0) {
-        document.getElementById('settings-msg').textContent = 'Please enter your name.';
-        return;
-      }
-      localStorage.setItem('playerName', name);
-      document.getElementById('settings-msg').textContent = 'Name saved!';
-    };
-  }, 350);
+  // Додаємо event listeners відразу без затримки
+  document.getElementById('back-menu').onclick = showMainMenu;
+  document.getElementById('settings-form').onsubmit = function(e) {
+    e.preventDefault();
+    const name = document.getElementById('player-name').value.trim();
+    if (name.length === 0) {
+      document.getElementById('settings-msg').textContent = 'Please enter your name.';
+      return;
+    }
+    localStorage.setItem('playerName', name);
+    document.getElementById('settings-msg').textContent = 'Name saved!';
+  };
 }
+
+// Ініціалізація при завантаженні
+document.addEventListener('DOMContentLoaded', function() {
+  // Встановлюємо фон відразу
+  setGlobalBackground();
+  
+  // Прибираємо всі переходи з app
+  const app = document.getElementById('app');
+  app.style.transition = 'none';
+  app.style.opacity = '1';
+});
 
 // Запуск з головного меню
 showMainMenu(); 
