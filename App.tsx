@@ -36,8 +36,22 @@ const MainMenu = ({ onStartGame, onShowLeaderboard, onShowSettings }) => {
       borderRadius: '20px',
       boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
       textAlign: 'center',
-      width: '300px'
-    }}>
+      width: '300px',
+      border: '2px solid transparent',
+      transition: 'all 0.3s ease',
+      cursor: 'pointer'
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.border = '2px solid white';
+      e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+      e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.2)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.border = '2px solid transparent';
+      e.currentTarget.style.transform = 'translateY(0) scale(1)';
+      e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.1)';
+    }}
+    >
       <h1 style={{
         color: '#26A7DE',
         fontSize: '2.5rem',
@@ -49,24 +63,8 @@ const MainMenu = ({ onStartGame, onShowLeaderboard, onShowSettings }) => {
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '15px',
-        border: '2px solid transparent',
-        borderRadius: '15px',
-        padding: '20px',
-        transition: 'all 0.3s ease',
-        cursor: 'pointer'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.border = '2px solid white';
-        e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.15)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.border = '2px solid transparent';
-        e.currentTarget.style.transform = 'translateY(0) scale(1)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
-      >
+        gap: '15px'
+      }}>
         <button
           onClick={onStartGame}
           style={{
