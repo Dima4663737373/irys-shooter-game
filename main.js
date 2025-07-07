@@ -2,10 +2,6 @@ import { BubbleShooterGame } from './game/bubbleShooter.js';
 
 const app = document.getElementById('app');
 
-// Відразу встановлюємо фон при завантаженні скрипта
-document.body.style.backgroundColor = '#2c3e50';
-document.documentElement.style.backgroundColor = '#2c3e50';
-
 // Глобальна функція для збереження результатів в лідерборд
 function saveToLeaderboard(score, gameMode = 'endless') {
   const playerName = localStorage.getItem('playerName') || 'Anonymous';
@@ -34,42 +30,18 @@ function saveToLeaderboard(score, gameMode = 'endless') {
 window.saveToLeaderboard = saveToLeaderboard;
 window.setGlobalBackground = setGlobalBackground;
 
-// Універсальна функція для встановлення фону скрізь
+// Функція для встановлення фону (спрощена)
 function setGlobalBackground() {
-  const timestamp = Date.now();
-  console.log('setGlobalBackground: Setting background with timestamp:', timestamp);
-  
-  // Простий прямий спосіб - встановлюємо стиль безпосередньо на body
-  document.body.style.cssText = `
-    background-color: #2c3e50 !important;
-    background-image: url('/menu-bg.jpg?v=${timestamp}');
-    background-position: center center;
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    margin: 0 !important;
-    padding: 0 !important;
-  `;
-  
-  console.log('setGlobalBackground: Set body style directly');
+  // Просто переконуємося що CSS працює правильно
+  document.body.style.background = "url('/menu-bg.jpg') center center / cover no-repeat fixed";
 }
 
-// Функція для плавних переходів між екранами
+// Функція для швидких переходів без затримок
 function smoothTransition(newContent) {
   const app = document.getElementById('app');
   
-  // Fade out з меншою затримкою
-  app.style.opacity = '0.3';
-  
-  setTimeout(() => {
-    // Змінюємо контент
-    app.innerHTML = newContent;
-    
-    // Fade in швидше
-    setTimeout(() => {
-      app.style.opacity = '1';
-    }, 10);
-  }, 100);
+  // Швидкий перехід без fade out
+  app.innerHTML = newContent;
 }
 
 function showMainMenu() {
@@ -106,39 +78,37 @@ function showMainMenu() {
   
   smoothTransition(content);
   
-  // Затримка для додавання event listeners після fade in
-  setTimeout(() => {
-    // Додаємо звукові ефекти для кнопок
-    const buttons = document.querySelectorAll('.main-menu button');
-    buttons.forEach(button => {
-      button.addEventListener('mouseenter', () => {
-        // Простий звук hover
-        if (window.AudioContext || window.webkitAudioContext) {
-          try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
-            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.15);
-          } catch (e) {
-            // Тихо ігноруємо помилки звуку
-          }
+  // Додаємо event listeners відразу без затримки
+  // Додаємо звукові ефекти для кнопок
+  const buttons = document.querySelectorAll('.main-menu button');
+  buttons.forEach(button => {
+    button.addEventListener('mouseenter', () => {
+      // Простий звук hover
+      if (window.AudioContext || window.webkitAudioContext) {
+        try {
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+          gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+          
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.15);
+        } catch (e) {
+          // Тихо ігноруємо помилки звуку
         }
-      });
+      }
     });
-    
-    document.getElementById('play-btn').onclick = () => showGame();
-    document.getElementById('leaderboard-btn').onclick = () => showLeaderboard();
-    document.getElementById('settings-btn').onclick = () => showSettings();
-  }, 350);
+  });
+  
+  document.getElementById('play-btn').onclick = () => showGame();
+  document.getElementById('leaderboard-btn').onclick = () => showLeaderboard();
+  document.getElementById('settings-btn').onclick = () => showSettings();
 }
 
 function showGame() {
@@ -159,24 +129,23 @@ function showGame() {
   
   window.showMainMenu = showMainMenu;
   
-  setTimeout(() => {
-    try {
-      const gameContainer = document.querySelector('.game-container');
-      console.log('showGame: Game container found:', gameContainer);
-      
-      const game = new BubbleShooterGame(gameContainer);
-      console.log('showGame: Game instance created:', game);
-      
-      // Запускаємо вибір режиму гри
-      game.showModeSelection();
-      console.log('showGame: Mode selection started');
-      
-      // Переконуємося що фон встановлений
-      setGlobalBackground();
-    } catch (error) {
-      console.error('showGame: Error creating game:', error);
-    }
-  }, 350);
+  // Ініціалізуємо гру відразу без затримки
+  try {
+    const gameContainer = document.querySelector('.game-container');
+    console.log('showGame: Game container found:', gameContainer);
+    
+    const game = new BubbleShooterGame(gameContainer);
+    console.log('showGame: Game instance created:', game);
+    
+    // Запускаємо вибір режиму гри
+    game.showModeSelection();
+    console.log('showGame: Mode selection started');
+    
+    // Переконуємося що фон встановлений
+    setGlobalBackground();
+  } catch (error) {
+    console.error('showGame: Error creating game:', error);
+  }
 }
 
 function showLeaderboard() {
