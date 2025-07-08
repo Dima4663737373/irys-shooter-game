@@ -950,57 +950,55 @@ export class BubbleShooterGame {
   drawBubble(x, y, type) {
     this.ctx.save();
     
-    // Використовуємо завантажені спрайти
+    // Кольори для кульок
+    const colors = {
+      'blue': '#4A90E2',
+      'red': '#E74C3C',
+      'yellow': '#F1C40F',
+      'kyan': '#1ABC9C',
+      'heart': '#FF69B4'
+    };
+    
+    // Тінь для кульки
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    this.ctx.shadowBlur = 8;
+    this.ctx.shadowOffsetY = 2;
+    
+    // Основна кулька
+    const color = colors[type] || '#999999';
+    this.ctx.fillStyle = color;
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Глянець
+    this.ctx.shadowColor = 'transparent';
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    this.ctx.beginPath();
+    this.ctx.arc(x - 6, y - 6, this.bubbleRadius / 2.5, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Рамка
+    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
+    this.ctx.stroke();
+    
+    // Спрайт всередині кульки (якщо є)
     if (this.bubbleImages[type]) {
-      // Тінь для спрайту
-      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-      this.ctx.shadowBlur = 8;
-      this.ctx.shadowOffsetY = 2;
+      // Зберігаємо стан без тіні для спрайту
+      this.ctx.shadowColor = 'transparent';
       
-      // Малюємо спрайт з центруванням
-      const size = this.bubbleRadius * 2;
+      // Розмір спрайту - 70% від діаметра кульки
+      const spriteSize = this.bubbleRadius * 1.4;
       this.ctx.drawImage(
         this.bubbleImages[type],
-        x - this.bubbleRadius,
-        y - this.bubbleRadius,
-        size,
-        size
+        x - spriteSize / 2,
+        y - spriteSize / 2,
+        spriteSize,
+        spriteSize
       );
-    } else {
-      // Fallback: кольорові кружечки якщо спрайт не завантажено
-      const colors = {
-        'blue': '#4A90E2',
-        'red': '#E74C3C',
-        'yellow': '#F1C40F',
-        'kyan': '#1ABC9C',
-        'heart': '#FF69B4'
-      };
-      
-      // Тінь
-      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-      this.ctx.shadowBlur = 8;
-      this.ctx.shadowOffsetY = 2;
-      
-      // Основна кулька
-      const color = colors[type] || '#999999';
-      this.ctx.fillStyle = color;
-      this.ctx.beginPath();
-      this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
-      this.ctx.fill();
-      
-      // Глянець
-      this.ctx.shadowColor = 'transparent';
-      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      this.ctx.beginPath();
-      this.ctx.arc(x - 6, y - 6, this.bubbleRadius / 2.5, 0, Math.PI * 2);
-      this.ctx.fill();
-      
-      // Рамка
-      this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-      this.ctx.lineWidth = 1;
-      this.ctx.beginPath();
-      this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
-      this.ctx.stroke();
     }
     
     this.ctx.restore();
