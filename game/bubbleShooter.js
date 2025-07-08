@@ -23,7 +23,7 @@ export class BubbleShooterGame {
     this.sidePadding = 60; // Було 25, тепер 60px для вужчого поля
     this.shooterY = this.canvas.height - this.bubbleRadius * 2; // Більше місця для стрільця
     
-    this.bubbleTypes = ['blue', 'red', 'yellow', 'kyan']; // Прибрали stone
+    this.bubbleTypes = ['blue', 'red', 'yellow', 'kyan', 'heart']; // Всі кастомні спрайти
     this.grid = [];
     this.shootingBubble = null;
     this.score = 0;
@@ -880,7 +880,16 @@ export class BubbleShooterGame {
         // Create particles only once at start
         if (b.progress < 0.15 && !b.particlesCreated) {
           const {x, y} = this.gridToPixel(b.row, b.col);
-          this.createParticles(x, y, b.type, 6); // Fewer particles for performance
+          // Отримуємо колір для типу кулі
+          const colors = {
+            'blue': '#4A90E2',
+            'red': '#E74C3C',
+            'yellow': '#F1C40F',
+            'kyan': '#1ABC9C',
+            'heart': '#FF69B4'
+          };
+          const color = colors[b.type] || '#999999';
+          this.createParticles(x, y, color, 6); // Fewer particles for performance
           b.particlesCreated = true;
         }
         
@@ -939,46 +948,60 @@ export class BubbleShooterGame {
   }
 
   drawBubble(x, y, type) {
-    console.log('drawBubble called with type:', type, 'at position:', x, y);
     this.ctx.save();
     
-    // Кольори для кульок
-    const colors = {
-      'blue': '#4A90E2',
-      'red': '#E74C3C',
-      'yellow': '#F1C40F',
-      'kyan': '#1ABC9C'
-    };
-    
-    console.log('Using color:', colors[type] || '#999999', 'for type:', type);
-    
-    // Тінь
-    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-    this.ctx.shadowBlur = 8;
-    this.ctx.shadowOffsetY = 2;
-    
-    // Основна кулька
-    const color = colors[type] || '#999999';
-    console.log('Setting fillStyle to:', color);
-    this.ctx.fillStyle = color;
-    this.ctx.beginPath();
-    this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
-    this.ctx.fill();
-    console.log('Bubble drawn with color:', this.ctx.fillStyle);
-    
-    // Глянець
-    this.ctx.shadowColor = 'transparent';
-    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    this.ctx.beginPath();
-    this.ctx.arc(x - 6, y - 6, this.bubbleRadius / 2.5, 0, Math.PI * 2);
-    this.ctx.fill();
-    
-    // Рамка
-    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-    this.ctx.lineWidth = 1;
-    this.ctx.beginPath();
-    this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
-    this.ctx.stroke();
+    // Використовуємо завантажені спрайти
+    if (this.bubbleImages[type]) {
+      // Тінь для спрайту
+      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowOffsetY = 2;
+      
+      // Малюємо спрайт з центруванням
+      const size = this.bubbleRadius * 2;
+      this.ctx.drawImage(
+        this.bubbleImages[type],
+        x - this.bubbleRadius,
+        y - this.bubbleRadius,
+        size,
+        size
+      );
+    } else {
+      // Fallback: кольорові кружечки якщо спрайт не завантажено
+      const colors = {
+        'blue': '#4A90E2',
+        'red': '#E74C3C',
+        'yellow': '#F1C40F',
+        'kyan': '#1ABC9C',
+        'heart': '#FF69B4'
+      };
+      
+      // Тінь
+      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowOffsetY = 2;
+      
+      // Основна кулька
+      const color = colors[type] || '#999999';
+      this.ctx.fillStyle = color;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Глянець
+      this.ctx.shadowColor = 'transparent';
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      this.ctx.beginPath();
+      this.ctx.arc(x - 6, y - 6, this.bubbleRadius / 2.5, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Рамка
+      this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      this.ctx.lineWidth = 1;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, this.bubbleRadius, 0, Math.PI * 2);
+      this.ctx.stroke();
+    }
     
     this.ctx.restore();
   }
