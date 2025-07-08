@@ -88,9 +88,9 @@ function showMainMenu() {
         transition: all 0.3s ease-in-out;
         cursor: default;
       " onmouseover="this.style.borderColor='rgba(255,255,255,1)'; this.style.boxShadow='0 25px 70px rgba(0,0,0,0.5), 0 15px 40px rgba(255,255,255,0.2), inset 0 2px 0 rgba(255,255,255,0.7)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.8)'; this.style.boxShadow='0 20px 60px rgba(0,0,0,0.4), 0 10px 30px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.5)'; this.style.transform='translateY(0)'">
-        <button id="play-btn" style="animation: slideInLeft 0.6s ease-out 0.3s both;">🎮 Play</button>
-        <button id="leaderboard-btn" style="animation: slideInUp 0.6s ease-out 0.5s both;">🏆 Leaderboard</button>
-        <button id="settings-btn" style="animation: slideInRight 0.6s ease-out 0.7s both;">⚙️ Settings</button>
+      <button id="play-btn" style="animation: slideInLeft 0.6s ease-out 0.3s both;">🎮 Play</button>
+      <button id="leaderboard-btn" style="animation: slideInUp 0.6s ease-out 0.5s both;">🏆 Leaderboard</button>
+      <button id="settings-btn" style="animation: slideInRight 0.6s ease-out 0.7s both;">⚙️ Settings</button>
       </div>
     </div>
   `;
