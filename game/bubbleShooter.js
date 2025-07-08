@@ -992,8 +992,8 @@ export class BubbleShooterGame {
       // Налаштування для максимальної якості спрайтів
       this.ctx.imageSmoothingEnabled = false; // Чітке відображення
       
-      // Розмір спрайту - оптимальний для чіткості (множник 2 для цілих пікселів)
-      const spriteSize = Math.round(this.bubbleRadius * 1.6); // Збільшуємо до 28.8, округлюємо до 29
+      // Розмір спрайту - зменшуємо для кращого балансу
+      const spriteSize = Math.round(this.bubbleRadius * 1.2); // Зменшуємо з 1.6 до 1.2 (26.4 -> 26)
       const spritePosX = Math.round(x - spriteSize / 2);
       const spritePosY = Math.round(y - spriteSize / 2);
       
@@ -1026,13 +1026,13 @@ export class BubbleShooterGame {
     const evenRow = row % 2 === 0;
     const bubbleSpacing = this.bubbleRadius * 2.1; // Збільшуємо простір між кульками
     const x = this.sidePadding + (evenRow ? 0 : this.bubbleRadius) + col * bubbleSpacing;
-    const y = row * this.bubbleRadius * 1.9 + this.bubbleRadius + 20; // Більший вертикальний простір
+    const y = row * this.bubbleRadius * 1.9 + this.bubbleRadius + 120; // Збільшуємо відступ з 20 до 120 пікселів
     return { x, y };
   }
 
   pixelToGrid(x, y) {
     const bubbleSpacing = this.bubbleRadius * 2.1;
-    const row = Math.floor((y - this.bubbleRadius - 20) / (this.bubbleRadius * 1.9));
+    const row = Math.floor((y - this.bubbleRadius - 120) / (this.bubbleRadius * 1.9)); // Оновлюємо offset з 20 до 120
     const evenRow = row % 2 === 0;
     const col = Math.floor((x - this.sidePadding - (evenRow ? 0 : this.bubbleRadius)) / bubbleSpacing);
     return { row, col };
