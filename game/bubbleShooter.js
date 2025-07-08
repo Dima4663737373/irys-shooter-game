@@ -4,20 +4,19 @@ export class BubbleShooterGame {
     this.canvas = container.querySelector('#gameCanvas');
     this.ctx = this.canvas.getContext('2d');
     
-    // Оптимізація Canvas для високих FPS
-    this.ctx.imageSmoothingEnabled = true;
-    this.ctx.imageSmoothingQuality = 'medium'; // Змінюємо з 'high' на 'medium' для FPS
+    // Максимальна якість зображень для чітких спрайтів
+    this.ctx.imageSmoothingEnabled = false; // Відключаємо згладжування для чітких пікселевих спрайтів
     
     // Кеш для позицій бульбашок (spatial optimization)
     this.activeBubbles = new Map(); // row,col -> {x, y, type}
     this.bubbleQuadTree = new Map(); // spatial partitioning for collision
     
-    this.canvas.width = 400;
-    this.canvas.height = 600;
+    this.canvas.width = 480; // Збільшуємо з 400 до 480 для кращої якості
+    this.canvas.height = 720; // Збільшуємо з 600 до 720 для кращої якості
     this.playAreaWidth = this.canvas.width;
-    this.playAreaHeight = this.canvas.height - 100;
+    this.playAreaHeight = this.canvas.height - 120;
     
-    this.bubbleRadius = 18;
+    this.bubbleRadius = 22; // Збільшуємо з 18 до 22 для кращої деталізації спрайтів
     this.cols = 12; // Зменшуємо з 13 до 12 для більшого простору
     this.rows = 12; // Зменшуємо з 14 до 12 для менш переповненого поля
     this.sidePadding = 60; // Було 25, тепер 60px для вужчого поля
@@ -990,12 +989,18 @@ export class BubbleShooterGame {
       // Зберігаємо стан без тіні для спрайту
       this.ctx.shadowColor = 'transparent';
       
-      // Розмір спрайту - 70% від діаметра кульки
-      const spriteSize = this.bubbleRadius * 1.4;
+      // Налаштування для максимальної якості спрайтів
+      this.ctx.imageSmoothingEnabled = false; // Чітке відображення
+      
+      // Розмір спрайту - оптимальний для чіткості (множник 2 для цілих пікселів)
+      const spriteSize = Math.round(this.bubbleRadius * 1.6); // Збільшуємо до 28.8, округлюємо до 29
+      const spritePosX = Math.round(x - spriteSize / 2);
+      const spritePosY = Math.round(y - spriteSize / 2);
+      
       this.ctx.drawImage(
         this.bubbleImages[type],
-        x - spriteSize / 2,
-        y - spriteSize / 2,
+        spritePosX,
+        spritePosY,
         spriteSize,
         spriteSize
       );
