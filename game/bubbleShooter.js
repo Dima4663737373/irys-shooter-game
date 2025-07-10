@@ -101,9 +101,11 @@ export class BubbleShooterGame {
   }
 
   initSounds() {
+    this.soundEnabled = true; // Спочатку звуки включені
     try {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
       this.loadSounds();
+      console.log('Sounds initialized successfully');
       // === Музика для головного меню відключена ===
       // if (!this.menuMusic) {
       //   this.menuMusic = new Audio('main-menu.mp3');
@@ -133,13 +135,18 @@ export class BubbleShooterGame {
   }
 
   playSound(soundName) {
-    if (!this.soundEnabled) return;
+    console.log(`Trying to play sound: ${soundName}, soundEnabled: ${this.soundEnabled}`);
+    if (!this.soundEnabled) {
+      console.log('Sound disabled, not playing');
+      return;
+    }
     
     if (soundName === 'shoot') {
       this.generateAndPlayTone(800, 400, 0.2, 0.3, 'exponential');
     } else if (soundName === 'pop') {
       this.generateAndPlayTone(200, 1000, 0.3, 0.4, 'linear');
     } else if (soundName === 'menu') {
+      console.log('Playing menu hover sound');
       this.generateAndPlayTone(600, 200, 0.15, 0.2, 'exponential');
     } else if (soundName === 'game-over') {
       this.generateAndPlayTone(400, -300, 1.0, 0.3, 'exponential');
@@ -149,9 +156,17 @@ export class BubbleShooterGame {
   }
 
   generateAndPlayTone(startFreq, freqChange, duration, volume, curve = 'exponential') {
-    if (!this.audioContext) return;
+    if (!this.audioContext) {
+      console.warn('No audio context available');
+      return;
+    }
     
     try {
+      // Ensure audio context is running
+      if (this.audioContext.state === 'suspended') {
+        this.audioContext.resume();
+      }
+      
       const oscillator = this.audioContext.createOscillator();
       const gainNode = this.audioContext.createGain();
       
@@ -176,8 +191,9 @@ export class BubbleShooterGame {
       
       oscillator.start(this.audioContext.currentTime);
       oscillator.stop(this.audioContext.currentTime + duration);
+      console.log(`Sound tone generated: freq ${startFreq}, duration ${duration}, volume ${volume}`);
     } catch (e) {
-      console.warn('Could not play sound');
+      console.warn('Could not play sound:', e);
     }
   }
 
@@ -212,8 +228,11 @@ export class BubbleShooterGame {
     this.smoothGameTransition(content, () => {
       // Додаємо hover ефекти та звуки
       const buttons = this.container.querySelectorAll('button');
-      buttons.forEach(button => {
+      console.log(`Found ${buttons.length} buttons for mode selection`);
+      buttons.forEach((button, index) => {
+        console.log(`Adding hover events to button ${index}: ${button.id}`);
         button.onmouseover = () => {
+          console.log(`Button ${button.id} hovered`);
           this.playSound('menu');
           button.style.transform = 'scale(1.05) translateY(-2px)';
           button.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)';

@@ -102,6 +102,7 @@ function showMainMenu() {
   const buttons = document.querySelectorAll('.main-menu button');
   buttons.forEach(button => {
     button.addEventListener('mouseenter', () => {
+      console.log('Menu button hovered - playing sound');
       // Простий звук hover
       if (window.AudioContext || window.webkitAudioContext) {
         try {
@@ -113,14 +114,17 @@ function showMainMenu() {
           gainNode.connect(audioContext.destination);
           
           oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
-          gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+          gainNode.gain.setValueAtTime(0.15, audioContext.currentTime); // Збільшуємо гучність
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
           
           oscillator.start(audioContext.currentTime);
           oscillator.stop(audioContext.currentTime + 0.15);
+          console.log('Menu hover sound played');
         } catch (e) {
-          // Тихо ігноруємо помилки звуку
+          console.warn('Error playing menu sound:', e);
         }
+      } else {
+        console.warn('AudioContext not supported');
       }
     });
   });
