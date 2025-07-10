@@ -409,12 +409,13 @@ export class BubbleShooterGame {
         this.grid[row][col] = null;
       }
     }
-    // Стартові ряди не доходять до allowedBottomRows
-    const startingRows = Math.max(1, this.rows - this.allowedBottomRows - 1);
+    // Генеруємо на 3 ряди менше для вищого розташування
+    const startingRows = Math.max(1, this.rows - this.allowedBottomRows - 4); // Було -1, тепер -4
     for (let row = 0; row < startingRows; row++) {
       const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
       for (let col = 0; col < colsInRow; col++) {
-        if (Math.random() < 0.8) {
+        // Більш рассіяне розміщення: зменшуємо щільність з 80% до 50%
+        if (Math.random() < 0.5) {
               // Використовуємо всі доступні типи кульок
     const colorTypes = this.bubbleTypes;
           const bubbleType = Math.random() < 0.6 ? colorTypes[Math.floor(Math.random() * colorTypes.length)] : colorTypes[Math.floor(Math.random() * colorTypes.length)];
@@ -426,8 +427,8 @@ export class BubbleShooterGame {
         }
       }
     }
-    // Додаємо 1-2 кам'яних кульки у випадкові зайняті місця стартових рядів
-    const stoneCount = Math.floor(Math.random() * 2) + 1;
+    // Рідше додаємо кам'яні кульки для більш рассіяного поля (0-1 замість 1-2)
+    const stoneCount = Math.random() < 0.3 ? 1 : 0; // 30% шанс одного каменя
     let placed = 0;
     let attempts = 0;
     while (placed < stoneCount && attempts < 100) {
@@ -451,11 +452,13 @@ export class BubbleShooterGame {
 
   // === НОВА ЛОГІКА РОЗУМНОЇ ГЕНЕРАЦІЇ ===
   generateSmartStartingBubbles() {
-    const startingRows = 4;
+    // Генеруємо тільки 2-3 ряди для вищого розташування і більш рассіяного поля
+    const startingRows = Math.max(2, this.rows - this.allowedBottomRows - 4);
     for (let row = 0; row < startingRows; row++) {
       const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
       for (let col = 0; col < colsInRow; col++) {
-        if (Math.random() < 0.8) { // Було 0.75, тепер 80% заповнення
+        // Більш рассіяне розміщення: зменшуємо щільність з 80% до 45%
+        if (Math.random() < 0.45) {
           // 60% шанс кластерної генерації, 40% balanced
           const bubbleType = Math.random() < 0.6 ? this.getClusteredBubbleType(row, col) : this.getBalancedBubbleType();
           this.grid[row][col] = {
