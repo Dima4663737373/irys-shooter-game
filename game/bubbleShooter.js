@@ -1024,8 +1024,16 @@ export class BubbleShooterGame {
         
         // Remove completed explosions immediately
         if (b.progress >= 1) {
-          this.grid[b.row][b.col] = null;
-          this.updateActiveBubblesCache(b.row, b.col, null); // Update cache
+          // Перевіряємо що шарик все ще існує перед видаленням
+          if (this.grid[b.row] && this.grid[b.row][b.col] && 
+              this.grid[b.row][b.col].type === b.type) {
+            
+            console.log(`Removing exploded bubble at ${b.row},${b.col} of type "${b.type}"`);
+            this.grid[b.row][b.col] = null;
+            this.updateActiveBubblesCache(b.row, b.col, null); // Update cache
+          } else {
+            console.warn(`Explosion cleanup: bubble at ${b.row},${b.col} already removed or type mismatch`);
+          }
           this.explodingBubbles.splice(i, 1);
         }
       }
@@ -1338,8 +1346,9 @@ export class BubbleShooterGame {
         this.updateDifficulty();
         this.updateScore();
         
-        // Додаємо рандомний ефект вибуху тільки для відповідних кульок
-        matches.forEach((match, index) => {
+        // Підготовка ефекту вибуху БЕЗ видалення з grid (це робиться пізніше в loop)
+        // Фільтруємо тільки дійсні шарики
+        const validMatches = matches.filter((match) => {
           // Подвійна перевірка що це правильний тип і позиція
           if (this.grid[match.row] && this.grid[match.row][match.col] && 
               this.grid[match.row][match.col].type === match.type) {
@@ -1347,17 +1356,18 @@ export class BubbleShooterGame {
             match.explosionDelay = Math.random() * 0.2;
             match.particlesCreated = false; // Для оптимізації
             
-            // console.log(`Removing bubble at ${match.row},${match.col} of type "${match.type}"`);
+            console.log(`Preparing explosion for bubble at ${match.row},${match.col} of type "${match.type}"`);
             
-            // Видаляємо тільки ці кульки з grid
-            this.grid[match.row][match.col] = null;
-            this.updateActiveBubblesCache(match.row, match.col, null);
+            // НЕ видаляємо тут! Це робиться в loop() після анімації
+            return true;
           } else {
             console.warn(`Skipping invalid match at ${match.row},${match.col} - bubble type mismatch`);
+            return false;
           }
         });
         
-        this.explodingBubbles = matches;
+        // ДОДАЄМО до існуючих explodingBubbles замість заміни
+        this.explodingBubbles = [...this.explodingBubbles, ...validMatches];
         this.checkFloatingBubbles();
       } else {
         // Reset consecutive hits if no match
@@ -1411,19 +1421,26 @@ export class BubbleShooterGame {
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
         if (this.grid[row][col] && !connected.has(`${row},${col}`)) {
-          const bubbleType = this.grid[row][col].type;
+          const bubble = this.grid[row][col];
+          const bubbleType = bubble.type;
           
-          // console.log(`Removing floating bubble at ${row},${col} of type "${bubbleType}"`);
-          
-          floatingBubbles.push({
-            row: row,
-            col: col,
-            type: bubbleType,
-            progress: 0
-          });
-          
-          this.grid[row][col] = null;
-          this.updateActiveBubblesCache(row, col, null);
+          // Перевіряємо що це дійсний тип перед видаленням
+          if (bubbleType && bubbleType !== 'stone') {
+            console.log(`Removing floating bubble at ${row},${col} of type "${bubbleType}"`);
+            
+            floatingBubbles.push({
+              row: row,
+              col: col,
+              type: bubbleType,
+              progress: 0
+            });
+            
+            // Видаляємо негайно для плаваючих шариків
+            this.grid[row][col] = null;
+            this.updateActiveBubblesCache(row, col, null);
+          } else {
+            console.warn(`Skipping floating removal for invalid type "${bubbleType}" at ${row},${col}`);
+          }
         }
       }
     }
