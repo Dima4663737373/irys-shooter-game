@@ -416,9 +416,8 @@ export class BubbleShooterGame {
       for (let col = 0; col < colsInRow; col++) {
         // Збільшуємо щільність на 40%: з 50% до 70%
         if (Math.random() < 0.7) {
-              // Використовуємо всі доступні типи кульок
-    const colorTypes = this.bubbleTypes;
-          const bubbleType = Math.random() < 0.6 ? colorTypes[Math.floor(Math.random() * colorTypes.length)] : colorTypes[Math.floor(Math.random() * colorTypes.length)];
+          // Вибираємо тип кульки з урахуванням попередніх у ряду
+          const bubbleType = this.selectBubbleTypeAvoidingSequence(row, col);
           this.grid[row][col] = {
             type: bubbleType,
             row: row,
@@ -450,6 +449,68 @@ export class BubbleShooterGame {
     this.rebuildActiveBubblesCache();
   }
 
+  // Функція для вибору типу кульки, уникаючи довгих послідовностей
+  selectBubbleTypeAvoidingSequence(row, col) {
+    const colorTypes = this.bubbleTypes.filter(t => t !== 'stone');
+    const avoidTypes = new Set();
+    
+    // Перевіряємо горизонтальну послідовність зліва
+    let consecutiveCount = 0;
+    let lastType = null;
+    for (let checkCol = col - 1; checkCol >= 0; checkCol--) {
+      if (this.grid[row][checkCol] && this.grid[row][checkCol].type !== 'stone') {
+        if (lastType === null) {
+          lastType = this.grid[row][checkCol].type;
+          consecutiveCount = 1;
+        } else if (this.grid[row][checkCol].type === lastType) {
+          consecutiveCount++;
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+    
+    // Якщо є 2+ однакових підряд горизонтально, уникаємо цього кольору
+    if (consecutiveCount >= 2 && lastType) {
+      avoidTypes.add(lastType);
+    }
+    
+    // Перевіряємо вертикальну послідовність зверху
+    consecutiveCount = 0;
+    lastType = null;
+    for (let checkRow = row - 1; checkRow >= 0; checkRow--) {
+      if (this.grid[checkRow][col] && this.grid[checkRow][col].type !== 'stone') {
+        if (lastType === null) {
+          lastType = this.grid[checkRow][col].type;
+          consecutiveCount = 1;
+        } else if (this.grid[checkRow][col].type === lastType) {
+          consecutiveCount++;
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+    
+    // Якщо є 2+ однакових підряд вертикально, уникаємо цього кольору
+    if (consecutiveCount >= 2 && lastType) {
+      avoidTypes.add(lastType);
+    }
+    
+    // Вибираємо з доступних кольорів, уникаючи проблемних
+    const availableTypes = colorTypes.filter(type => !avoidTypes.has(type));
+    
+    if (availableTypes.length > 0) {
+      return availableTypes[Math.floor(Math.random() * availableTypes.length)];
+    }
+    
+    // Якщо всі кольори заборонені (рідкісний випадок), повертаємо випадковий
+    return colorTypes[Math.floor(Math.random() * colorTypes.length)];
+  }
+
   // === НОВА ЛОГІКА РОЗУМНОЇ ГЕНЕРАЦІЇ ===
   generateSmartStartingBubbles() {
     // Генеруємо тільки 2-3 ряди для вищого розташування і більш рассіяного поля
@@ -459,8 +520,8 @@ export class BubbleShooterGame {
       for (let col = 0; col < colsInRow; col++) {
         // Збільшуємо щільність на 40%: з 45% до 65%
         if (Math.random() < 0.65) {
-          // 60% шанс кластерної генерації, 40% balanced
-          const bubbleType = Math.random() < 0.6 ? this.getClusteredBubbleType(row, col) : this.getBalancedBubbleType();
+          // Вибираємо тип з урахуванням попередніх у ряду
+          const bubbleType = this.selectBubbleTypeAvoidingSequence(row, col);
           this.grid[row][col] = {
             type: bubbleType,
             row: row,
@@ -1411,7 +1472,8 @@ export class BubbleShooterGame {
       this.generateSpecialPattern();
     } else {
       for (let col = 0; col < this.cols; col++) {
-        const bubbleType = this.getSmartBubbleType(0, col, 'adaptive');
+        // Використовуємо нову логіку для уникнення довгих послідовностей
+        const bubbleType = this.selectBubbleTypeAvoidingSequence(0, col);
         this.grid[0][col] = {
           type: bubbleType,
           row: 0,
