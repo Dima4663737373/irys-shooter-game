@@ -411,21 +411,12 @@ export class BubbleShooterGame {
     }
     // Генеруємо на 3 ряди менше для вищого розташування
     const startingRows = Math.max(1, this.rows - this.allowedBottomRows - 4); // Було -1, тепер -4
-    for (let row = 0; row < startingRows; row++) {
-      const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
-      for (let col = 0; col < colsInRow; col++) {
-        // Збільшуємо щільність на 40%: з 50% до 70%
-        if (Math.random() < 0.7) {
-          // Вибираємо тип кульки з урахуванням попередніх у ряду
-          const bubbleType = this.selectBubbleTypeAvoidingSequence(row, col);
-          this.grid[row][col] = {
-            type: bubbleType,
-            row: row,
-            col: col
-          };
-        }
-      }
-    }
+    
+    // Спочатку створюємо базову структуру з гарантованими шариками
+    this.createBalancedStructure(startingRows);
+    
+    // Потім додаємо випадкові шарики для рознообразності, уникаючи великих пустот
+    this.fillEmptyAreas(startingRows);
     // Частіше додаємо кам'яні кульки для більш загруженого поля (1-2 замість 0-1)
     const stoneCount = Math.random() < 0.7 ? (Math.random() < 0.5 ? 1 : 2) : 0; // 70% шанс 1-2 каменів
     let placed = 0;
@@ -447,6 +438,72 @@ export class BubbleShooterGame {
     }
     this.updateColorDistribution();
     this.rebuildActiveBubblesCache();
+  }
+
+  // Створюємо збалансовану базову структуру
+  createBalancedStructure(startingRows) {
+    for (let row = 0; row < startingRows; row++) {
+      const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
+      
+      // Створюємо паттерн з регулярними інтервалами
+      for (let col = 0; col < colsInRow; col++) {
+        // Кожен 2-й шарик у шаховому порядку - гарантований
+        const isGuaranteedPosition = (row + col) % 3 !== 2; // ~67% позицій
+        
+        if (isGuaranteedPosition) {
+          const bubbleType = this.selectBubbleTypeAvoidingSequence(row, col);
+          this.grid[row][col] = {
+            type: bubbleType,
+            row: row,
+            col: col
+          };
+        }
+      }
+    }
+  }
+
+  // Заповнюємо пусті області, уникаючи великих пустот
+  fillEmptyAreas(startingRows) {
+    for (let row = 0; row < startingRows; row++) {
+      const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
+      
+      for (let col = 0; col < colsInRow; col++) {
+        // Пропускаємо вже заповнені клітинки
+        if (this.grid[row][col]) continue;
+        
+        // Перевіряємо, чи створить пустота велику пустую зону
+        const emptyNeighbors = this.countEmptyNeighbors(row, col);
+        const shouldFill = emptyNeighbors >= 3 || Math.random() < 0.3;
+        
+        if (shouldFill) {
+          const bubbleType = this.selectBubbleTypeAvoidingSequence(row, col);
+          this.grid[row][col] = {
+            type: bubbleType,
+            row: row,
+            col: col
+          };
+        }
+      }
+    }
+  }
+
+  // Рахує кількість пустих сусідів навколо позиції
+  countEmptyNeighbors(row, col) {
+    const neighbors = this.getNeighbors(row, col);
+    let emptyCount = 0;
+    
+    for (const {r, c} of neighbors) {
+      if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+        if (!this.grid[r][c]) {
+          emptyCount++;
+        }
+      } else {
+        // Позиції за межами поля рахуємо як пусті
+        emptyCount++;
+      }
+    }
+    
+    return emptyCount;
   }
 
   // Функція для вибору типу кульки, уникаючи довгих послідовностей
@@ -515,21 +572,11 @@ export class BubbleShooterGame {
   generateSmartStartingBubbles() {
     // Генеруємо тільки 2-3 ряди для вищого розташування і більш рассіяного поля
     const startingRows = Math.max(2, this.rows - this.allowedBottomRows - 4);
-    for (let row = 0; row < startingRows; row++) {
-      const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
-      for (let col = 0; col < colsInRow; col++) {
-        // Збільшуємо щільність на 40%: з 45% до 65%
-        if (Math.random() < 0.65) {
-          // Вибираємо тип з урахуванням попередніх у ряду
-          const bubbleType = this.selectBubbleTypeAvoidingSequence(row, col);
-          this.grid[row][col] = {
-            type: bubbleType,
-            row: row,
-            col: col
-          };
-        }
-      }
-    }
+    
+    // Використовуємо ту ж збалансовану логіку
+    this.createBalancedStructure(startingRows);
+    this.fillEmptyAreas(startingRows);
+    
     this.updateColorDistribution();
   }
 
