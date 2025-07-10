@@ -1038,6 +1038,9 @@ export class BubbleShooterGame {
             const currentBubble = this.grid[b.row] && this.grid[b.row][b.col] ? this.grid[b.row][b.col] : null;
             const currentType = currentBubble ? currentBubble.type : 'NO_BUBBLE';
             console.error(`CRITICAL: Explosion cleanup failed at ${b.row},${b.col}! Expected: "${b.type}", Found: "${currentType}"`);
+            
+            // Перевіряємо цілісність після помилки
+            this.debugGridIntegrity('after_explosion_cleanup_error');
           }
           this.explodingBubbles.splice(i, 1);
         }
@@ -1359,6 +1362,10 @@ export class BubbleShooterGame {
       };
       // Оновлюємо кеш для оптимізації FPS
       this.updateActiveBubblesCache(hitRow, hitCol, this.grid[hitRow][hitCol]);
+      
+      // Детальна перевірка сусідів перед пошуком груп
+      this.debugNeighbors(hitRow, hitCol);
+      
       const matches = this.findAndRemoveGroups(hitRow, hitCol);
       
       // console.log(`attachBubbleToGrid: Found ${matches.length} matches for bubble type "${this.grid[hitRow][hitCol].type}" at ${hitRow},${hitCol}`);
@@ -1397,6 +1404,10 @@ export class BubbleShooterGame {
         
         // ДОДАЄМО до існуючих explodingBubbles замість заміни
         this.explodingBubbles = [...this.explodingBubbles, ...validMatches];
+        
+        // Перевіряємо цілісність після додавання групи до вибуху
+        this.debugGridIntegrity('after_adding_exploding_group');
+        
         this.checkFloatingBubbles();
       } else {
         // Reset consecutive hits if no match
@@ -1468,7 +1479,7 @@ export class BubbleShooterGame {
           
           // Перевіряємо що це дійсний тип перед видаленням
           if (bubbleType && bubbleType !== 'stone') {
-            console.log(`Removing floating bubble at ${row},${col} of type "${bubbleType}"`);
+            console.log(`💧 FLOATING: Removing floating bubble at ${row},${col} of type "${bubbleType}"`);
             
             floatingBubbles.push({
               row: row,
@@ -1478,6 +1489,7 @@ export class BubbleShooterGame {
             });
             
             // Видаляємо негайно для плаваючих шариків
+            console.log(`💧 REMOVING: Actually deleting floating bubble at ${row},${col} from grid`);
             this.grid[row][col] = null;
             this.updateActiveBubblesCache(row, col, null);
           } else {
@@ -1492,6 +1504,9 @@ export class BubbleShooterGame {
       this.explodingBubbles = [...this.explodingBubbles, ...floatingBubbles];
       this.score += floatingBubbles.length * 10;
       this.updateScore();
+      
+      // Перевіряємо цілісність після видалення плаваючих шариків
+      this.debugGridIntegrity('after_removing_floating_bubbles');
     }
   }
 
@@ -1503,10 +1518,11 @@ export class BubbleShooterGame {
     }
     
     const type = this.grid[row][col].type;
+    console.log(`🔍 FIND_GROUPS: Starting search from ${row},${col} for type "${type}"`);
     
     // Каменні блоки та недійсні типи не можуть формувати групи для видалення
     if (!type || type === 'stone') {
-      // console.log(`findAndRemoveGroups: Invalid type "${type}" at ${row},${col}`);
+      console.log(`findAndRemoveGroups: Invalid type "${type}" at ${row},${col}`);
       return [];
     }
     
@@ -1528,11 +1544,18 @@ export class BubbleShooterGame {
       
       const currentType = this.grid[r][c].type;
       
+      // ДЕТАЛЬНЕ ЛОГУВАННЯ кожної перевірки
+      console.log(`  🔍 Checking neighbor ${r},${c}: type="${currentType}" vs target="${type}"`);
+      
       // Тільки шарики того ж кольору (не stone і не undefined)
       if (!currentType || currentType === 'stone' || currentType !== type) {
+        if (currentType !== type) {
+          console.log(`  ❌ MISMATCH: "${currentType}" !== "${type}" at ${r},${c}`);
+        }
         return;
       }
       
+      console.log(`  ✅ MATCH: Adding ${r},${c} type="${currentType}" to group`);
       visited.add(key);
       matches.push({
         row: r,
@@ -1559,7 +1582,7 @@ export class BubbleShooterGame {
     
     checkNeighbor(row, col);
     
-    // console.log(`findAndRemoveGroups: Found ${matches.length} matches of type "${type}" starting from ${row},${col}`);
+    console.log(`🔍 FIND_GROUPS: Found ${matches.length} matches of type "${type}":`, matches.map(m => `${m.row},${m.col}(${m.type})`));
     return matches;
   }
 
@@ -1621,6 +1644,9 @@ export class BubbleShooterGame {
     }
     // Очищаємо перший ряд
     for (let col = 0; col < this.cols; col++) {
+      if (this.grid[0][col]) {
+        console.log(`📉 DROP: Clearing top row bubble at 0,${col} of type "${this.grid[0][col].type}"`);
+      }
       this.grid[0][col] = null;
     }
     this.bubbleGenerationCounter++;
@@ -1708,6 +1734,72 @@ export class BubbleShooterGame {
   }
 
   // FPS лічильник
+  // Функція для перевірки логіки сусідів
+  debugNeighbors(row, col) {
+    console.log(`🔍 DEBUG: Checking neighbors for position ${row},${col}`);
+    
+    const isEvenRow = row % 2 === 0;
+    const neighbors = [
+      {r: row-1, c: isEvenRow ? col-1 : col, name: 'top-left'},
+      {r: row-1, c: isEvenRow ? col : col+1, name: 'top-right'},
+      {r: row, c: col-1, name: 'left'},
+      {r: row, c: col+1, name: 'right'},
+      {r: row+1, c: isEvenRow ? col-1 : col, name: 'bottom-left'},
+      {r: row+1, c: isEvenRow ? col : col+1, name: 'bottom-right'}
+    ];
+    
+    neighbors.forEach(({r, c, name}) => {
+      if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
+        const bubble = this.grid[r][c];
+        const type = bubble ? bubble.type : 'EMPTY';
+        console.log(`  ${name}: ${r},${c} = ${type}`);
+      } else {
+        console.log(`  ${name}: ${r},${c} = OUT_OF_BOUNDS`);
+      }
+    });
+  }
+
+  // Функція для перевірки цілісності сітки
+  debugGridIntegrity(context = '') {
+    console.log(`🔍 GRID_INTEGRITY ${context}:`);
+    
+    const colorCounts = {};
+    let totalBubbles = 0;
+    
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        if (this.grid[row][col]) {
+          const type = this.grid[row][col].type;
+          colorCounts[type] = (colorCounts[type] || 0) + 1;
+          totalBubbles++;
+        }
+      }
+    }
+    
+    console.log(`  Total bubbles: ${totalBubbles}`);
+    console.log(`  Color distribution:`, colorCounts);
+    console.log(`  Exploding bubbles: ${this.explodingBubbles.length}`);
+    
+    // Перевіряємо чи є шарики що вибухають але все ще в сітці
+    const mismatchedBubbles = [];
+    this.explodingBubbles.forEach(bubble => {
+      if (this.grid[bubble.row] && this.grid[bubble.row][bubble.col]) {
+        const gridType = this.grid[bubble.row][bubble.col].type;
+        if (gridType !== bubble.type) {
+          mismatchedBubbles.push({
+            pos: `${bubble.row},${bubble.col}`,
+            expected: bubble.type,
+            actual: gridType
+          });
+        }
+      }
+    });
+    
+    if (mismatchedBubbles.length > 0) {
+      console.error(`🚨 CRITICAL: Found ${mismatchedBubbles.length} mismatched exploding bubbles:`, mismatchedBubbles);
+    }
+  }
+
   drawFPS() {
     this.ctx.save();
     this.ctx.font = '16px Arial';
