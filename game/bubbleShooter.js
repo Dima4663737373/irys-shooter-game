@@ -1323,6 +1323,9 @@ export class BubbleShooterGame {
       // Оновлюємо кеш для оптимізації FPS
       this.updateActiveBubblesCache(hitRow, hitCol, this.grid[hitRow][hitCol]);
       const matches = this.findAndRemoveGroups(hitRow, hitCol);
+      
+      // console.log(`attachBubbleToGrid: Found ${matches.length} matches for bubble type "${this.grid[hitRow][hitCol].type}" at ${hitRow},${hitCol}`);
+      
       if (matches.length >= 3) {
         this.playSound('pop');
         let points = 0;
@@ -1334,19 +1337,32 @@ export class BubbleShooterGame {
         this.consecutiveHits++;
         this.updateDifficulty();
         this.updateScore();
-        // Додаємо рандомний ефект вибуху
-        matches.forEach(match => {
-          match.explosionDelay = Math.random() * 0.2;
-          match.particlesCreated = false; // Для оптимізації
-          // Видаляємо тільки ці кульки з grid
-          this.grid[match.row][match.col] = null;
-          this.updateActiveBubblesCache(match.row, match.col, null);
+        
+        // Додаємо рандомний ефект вибуху тільки для відповідних кульок
+        matches.forEach((match, index) => {
+          // Подвійна перевірка що це правильний тип і позиція
+          if (this.grid[match.row] && this.grid[match.row][match.col] && 
+              this.grid[match.row][match.col].type === match.type) {
+            
+            match.explosionDelay = Math.random() * 0.2;
+            match.particlesCreated = false; // Для оптимізації
+            
+            // console.log(`Removing bubble at ${match.row},${match.col} of type "${match.type}"`);
+            
+            // Видаляємо тільки ці кульки з grid
+            this.grid[match.row][match.col] = null;
+            this.updateActiveBubblesCache(match.row, match.col, null);
+          } else {
+            console.warn(`Skipping invalid match at ${match.row},${match.col} - bubble type mismatch`);
+          }
         });
+        
         this.explodingBubbles = matches;
         this.checkFloatingBubbles();
       } else {
         // Reset consecutive hits if no match
         this.consecutiveHits = 0;
+        // console.log('No valid group found (less than 3 bubbles)');
       }
       // Оновлюємо розподіл кольорів
       this.updateColorDistribution();
@@ -1395,13 +1411,19 @@ export class BubbleShooterGame {
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
         if (this.grid[row][col] && !connected.has(`${row},${col}`)) {
+          const bubbleType = this.grid[row][col].type;
+          
+          // console.log(`Removing floating bubble at ${row},${col} of type "${bubbleType}"`);
+          
           floatingBubbles.push({
             row: row,
             col: col,
-            type: this.grid[row][col].type,
+            type: bubbleType,
             progress: 0
           });
+          
           this.grid[row][col] = null;
+          this.updateActiveBubblesCache(row, col, null);
         }
       }
     }
@@ -1415,15 +1437,40 @@ export class BubbleShooterGame {
   }
 
   findAndRemoveGroups(row, col) {
+    // Перевіряємо що клітинка існує
+    if (!this.grid[row] || !this.grid[row][col]) {
+      console.warn(`findAndRemoveGroups: No bubble at ${row},${col}`);
+      return [];
+    }
+    
     const type = this.grid[row][col].type;
+    
+    // Каменні блоки та недійсні типи не можуть формувати групи для видалення
+    if (!type || type === 'stone') {
+      // console.log(`findAndRemoveGroups: Invalid type "${type}" at ${row},${col}`);
+      return [];
+    }
+    
     const visited = new Set();
     const matches = [];
     
     const checkNeighbor = (r, c) => {
       const key = `${r},${c}`;
-      if (r < 0 || r >= this.rows || c < 0 || c >= this.cols || 
-          visited.has(key) || !this.grid[r][c] || 
-          this.grid[r][c].type !== type) {
+      
+      // Перевірки меж та вже відвіданих клітинок
+      if (r < 0 || r >= this.rows || c < 0 || c >= this.cols || visited.has(key)) {
+        return;
+      }
+      
+      // Перевіряємо що клітинка існує та має шарик
+      if (!this.grid[r] || !this.grid[r][c]) {
+        return;
+      }
+      
+      const currentType = this.grid[r][c].type;
+      
+      // Тільки шарики того ж кольору (не stone і не undefined)
+      if (!currentType || currentType === 'stone' || currentType !== type) {
         return;
       }
       
@@ -1431,10 +1478,11 @@ export class BubbleShooterGame {
       matches.push({
         row: r,
         col: c,
-        type: type,
+        type: currentType,
         progress: 0
       });
       
+      // Отримуємо сусідів для шестикутної сітки
       const isEvenRow = r % 2 === 0;
       const neighbors = [
         {r: r-1, c: isEvenRow ? c-1 : c},
@@ -1451,6 +1499,8 @@ export class BubbleShooterGame {
     };
     
     checkNeighbor(row, col);
+    
+    // console.log(`findAndRemoveGroups: Found ${matches.length} matches of type "${type}" starting from ${row},${col}`);
     return matches;
   }
 
