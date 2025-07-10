@@ -414,8 +414,8 @@ export class BubbleShooterGame {
     for (let row = 0; row < startingRows; row++) {
       const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
       for (let col = 0; col < colsInRow; col++) {
-        // Більш рассіяне розміщення: зменшуємо щільність з 80% до 50%
-        if (Math.random() < 0.5) {
+        // Збільшуємо щільність на 40%: з 50% до 70%
+        if (Math.random() < 0.7) {
               // Використовуємо всі доступні типи кульок
     const colorTypes = this.bubbleTypes;
           const bubbleType = Math.random() < 0.6 ? colorTypes[Math.floor(Math.random() * colorTypes.length)] : colorTypes[Math.floor(Math.random() * colorTypes.length)];
@@ -427,8 +427,8 @@ export class BubbleShooterGame {
         }
       }
     }
-    // Рідше додаємо кам'яні кульки для більш рассіяного поля (0-1 замість 1-2)
-    const stoneCount = Math.random() < 0.3 ? 1 : 0; // 30% шанс одного каменя
+    // Частіше додаємо кам'яні кульки для більш загруженого поля (1-2 замість 0-1)
+    const stoneCount = Math.random() < 0.7 ? (Math.random() < 0.5 ? 1 : 2) : 0; // 70% шанс 1-2 каменів
     let placed = 0;
     let attempts = 0;
     while (placed < stoneCount && attempts < 100) {
@@ -457,8 +457,8 @@ export class BubbleShooterGame {
     for (let row = 0; row < startingRows; row++) {
       const colsInRow = row % 2 === 0 ? this.cols : this.cols - 1;
       for (let col = 0; col < colsInRow; col++) {
-        // Більш рассіяне розміщення: зменшуємо щільність з 80% до 45%
-        if (Math.random() < 0.45) {
+        // Збільшуємо щільність на 40%: з 45% до 65%
+        if (Math.random() < 0.65) {
           // 60% шанс кластерної генерації, 40% balanced
           const bubbleType = Math.random() < 0.6 ? this.getClusteredBubbleType(row, col) : this.getBalancedBubbleType();
           this.grid[row][col] = {
