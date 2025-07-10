@@ -1024,15 +1024,20 @@ export class BubbleShooterGame {
         
         // Remove completed explosions immediately
         if (b.progress >= 1) {
-          // Перевіряємо що шарик все ще існує перед видаленням
+          // Перевіряємо що шарик все ще існує перед видаленням з потрійною перевіркою
           if (this.grid[b.row] && this.grid[b.row][b.col] && 
-              this.grid[b.row][b.col].type === b.type) {
+              this.grid[b.row][b.col].type === b.type &&
+              b.row >= 0 && b.row < this.rows && 
+              b.col >= 0 && b.col < this.cols) {
             
-            console.log(`Removing exploded bubble at ${b.row},${b.col} of type "${b.type}"`);
+            console.log(`SAFE: Removing exploded bubble at ${b.row},${b.col} of type "${b.type}"`);
             this.grid[b.row][b.col] = null;
             this.updateActiveBubblesCache(b.row, b.col, null); // Update cache
           } else {
-            console.warn(`Explosion cleanup: bubble at ${b.row},${b.col} already removed or type mismatch`);
+            // Детальна інформація про помилку
+            const currentBubble = this.grid[b.row] && this.grid[b.row][b.col] ? this.grid[b.row][b.col] : null;
+            const currentType = currentBubble ? currentBubble.type : 'NO_BUBBLE';
+            console.error(`CRITICAL: Explosion cleanup failed at ${b.row},${b.col}! Expected: "${b.type}", Found: "${currentType}"`);
           }
           this.explodingBubbles.splice(i, 1);
         }
@@ -1323,6 +1328,30 @@ export class BubbleShooterGame {
         this.shootingBubble = null;
         return;
       }
+      
+      // Додаткова перевірка що позиція дійсно вільна
+      if (this.grid[hitRow][hitCol]) {
+        console.error(`CRITICAL: Trying to attach bubble to occupied position ${hitRow},${hitCol}! Current type: "${this.grid[hitRow][hitCol].type}"`);
+        this.gameOver();
+        this.shootingBubble = null;
+        return;
+      }
+      
+      // Перевіряємо що ця позиція не в процесі вибуху
+      const positionKey = `${hitRow},${hitCol}`;
+      const isExploding = this.explodingBubbles.some(bubble => 
+        bubble.row === hitRow && bubble.col === hitCol
+      );
+      
+      if (isExploding) {
+        console.error(`CRITICAL: Trying to attach bubble to exploding position ${hitRow},${hitCol}!`);
+        this.gameOver();
+        this.shootingBubble = null;
+        return;
+      }
+      
+      console.log(`SAFE: Attaching ${this.shootingBubble.type} bubble to position ${hitRow},${hitCol}`);
+      
       this.grid[hitRow][hitCol] = {
         type: this.shootingBubble.type,
         row: hitRow,
@@ -1381,13 +1410,20 @@ export class BubbleShooterGame {
   }
 
   checkFloatingBubbles() {
+    // Створюємо множину шариків що вибухають для перевірки
+    const explodingPositions = new Set();
+    this.explodingBubbles.forEach(bubble => {
+      explodingPositions.add(`${bubble.row},${bubble.col}`);
+    });
+    
     const connected = new Set();
     
     // Find all bubbles connected to the top row
     const checkConnected = (row, col) => {
       const key = `${row},${col}`;
       if (row < 0 || row >= this.rows || col < 0 || col >= this.cols || 
-          connected.has(key) || !this.grid[row][col]) {
+          connected.has(key) || !this.grid[row][col] || 
+          explodingPositions.has(key)) { // НЕ обробляємо шарики що вже вибухають
         return;
       }
       
@@ -1420,7 +1456,13 @@ export class BubbleShooterGame {
     const floatingBubbles = [];
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
-        if (this.grid[row][col] && !connected.has(`${row},${col}`)) {
+        const key = `${row},${col}`;
+        
+        // Перевіряємо що шарик існує, не з'єднаний і НЕ вже в процесі вибуху
+        if (this.grid[row][col] && 
+            !connected.has(key) && 
+            !explodingPositions.has(key)) {
+          
           const bubble = this.grid[row][col];
           const bubbleType = bubble.type;
           
