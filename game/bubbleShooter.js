@@ -1366,7 +1366,8 @@ export class BubbleShooterGame {
       // Детальна перевірка сусідів перед пошуком груп
       this.debugNeighbors(hitRow, hitCol);
       
-      const matches = this.findAndRemoveGroups(hitRow, hitCol);
+      // Використовуємо НОВУ БЕЗПЕЧНУ функцію пошуку груп
+      const matches = this.findGroupsSafely(hitRow, hitCol);
       
       // console.log(`attachBubbleToGrid: Found ${matches.length} matches for bubble type "${this.grid[hitRow][hitCol].type}" at ${hitRow},${hitCol}`);
       
@@ -1420,151 +1421,51 @@ export class BubbleShooterGame {
     }
   }
 
-  checkFloatingBubbles() {
-    // Створюємо множину шариків що вибухають для перевірки
+  // НОВА БЕЗПЕЧНА ФУНКЦІЯ для пошуку плаваючих кульок
+  findFloatingBubblesSafely() {
+    console.log(`🛡️ SAFE_FLOATING: Starting safe floating bubble detection`);
+    
+    // Створюємо ПОВНУ КОПІЮ grid
+    const gridCopy = this.grid.map(row => 
+      row.map(cell => cell ? { ...cell } : null)
+    );
+    
+    // Створюємо множину шариків що вибухають
     const explodingPositions = new Set();
     this.explodingBubbles.forEach(bubble => {
       explodingPositions.add(`${bubble.row},${bubble.col}`);
     });
     
+    // Використовуємо стек для знаходження з'єднаних кульок
     const connected = new Set();
+    const stack = [];
     
-    // Find all bubbles connected to the top row
-    const checkConnected = (row, col) => {
-      const key = `${row},${col}`;
-      if (row < 0 || row >= this.rows || col < 0 || col >= this.cols || 
-          connected.has(key) || !this.grid[row][col] || 
-          explodingPositions.has(key)) { // НЕ обробляємо шарики що вже вибухають
-        return;
-      }
-      
-      connected.add(key);
-      
-      // Check all 6 neighbors in hexagonal grid
-      const isEvenRow = row % 2 === 0;
-      const neighbors = [
-        {r: row-1, c: isEvenRow ? col-1 : col}, // top-left
-        {r: row-1, c: isEvenRow ? col : col+1}, // top-right
-        {r: row, c: col-1}, // left
-        {r: row, c: col+1}, // right
-        {r: row+1, c: isEvenRow ? col-1 : col}, // bottom-left
-        {r: row+1, c: isEvenRow ? col : col+1}  // bottom-right
-      ];
-      
-      for (const {r, c} of neighbors) {
-        checkConnected(r, c);
-      }
-    };
-    
-    // Start from top row
+    // Додаємо всі кульки з верхнього ряду до стеку
     for (let col = 0; col < this.cols; col++) {
-      if (this.grid[0][col]) {
-        checkConnected(0, col);
+      if (gridCopy[0][col] && !explodingPositions.has(`0,${col}`)) {
+        stack.push({r: 0, c: col});
       }
     }
     
-    // Mark floating bubbles for removal
-    const floatingBubbles = [];
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        const key = `${row},${col}`;
-        
-        // Перевіряємо що шарик існує, не з'єднаний і НЕ вже в процесі вибуху
-        if (this.grid[row][col] && 
-            !connected.has(key) && 
-            !explodingPositions.has(key)) {
-          
-          const bubble = this.grid[row][col];
-          const bubbleType = bubble.type;
-          
-          // Перевіряємо що це дійсний тип перед видаленням
-          if (bubbleType && bubbleType !== 'stone') {
-            console.log(`💧 FLOATING: Removing floating bubble at ${row},${col} of type "${bubbleType}"`);
-            
-            floatingBubbles.push({
-              row: row,
-              col: col,
-              type: bubbleType,
-              progress: 0
-            });
-            
-            // Видаляємо негайно для плаваючих шариків
-            console.log(`💧 REMOVING: Actually deleting floating bubble at ${row},${col} from grid`);
-            this.grid[row][col] = null;
-            this.updateActiveBubblesCache(row, col, null);
-          } else {
-            console.warn(`Skipping floating removal for invalid type "${bubbleType}" at ${row},${col}`);
-          }
-        }
-      }
-    }
-    
-    // Add floating bubbles to explosion animation if any found
-    if (floatingBubbles.length > 0) {
-      this.explodingBubbles = [...this.explodingBubbles, ...floatingBubbles];
-      this.score += floatingBubbles.length * 10;
-      this.updateScore();
-      
-      // Перевіряємо цілісність після видалення плаваючих шариків
-      this.debugGridIntegrity('after_removing_floating_bubbles');
-    }
-  }
-
-  findAndRemoveGroups(row, col) {
-    // Перевіряємо що клітинка існує
-    if (!this.grid[row] || !this.grid[row][col]) {
-      console.warn(`findAndRemoveGroups: No bubble at ${row},${col}`);
-      return [];
-    }
-    
-    const type = this.grid[row][col].type;
-    console.log(`🔍 FIND_GROUPS: Starting search from ${row},${col} for type "${type}"`);
-    
-    // Каменні блоки та недійсні типи не можуть формувати групи для видалення
-    if (!type || type === 'stone') {
-      console.log(`findAndRemoveGroups: Invalid type "${type}" at ${row},${col}`);
-      return [];
-    }
-    
-    const visited = new Set();
-    const matches = [];
-    
-    const checkNeighbor = (r, c) => {
+    // Проходимо всі з'єднані кульки
+    while (stack.length > 0) {
+      const {r, c} = stack.pop();
       const key = `${r},${c}`;
       
-      // Перевірки меж та вже відвіданих клітинок
-      if (r < 0 || r >= this.rows || c < 0 || c >= this.cols || visited.has(key)) {
-        return;
-      }
+      // Пропускаємо якщо вже відвідали
+      if (connected.has(key)) continue;
       
-      // Перевіряємо що клітинка існує та має шарик
-      if (!this.grid[r] || !this.grid[r][c]) {
-        return;
-      }
+      // Перевіряємо межі
+      if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) continue;
       
-      const currentType = this.grid[r][c].type;
+      // Перевіряємо що клітинка існує і не вибухає
+      if (!gridCopy[r][c] || explodingPositions.has(key)) continue;
       
-      // ДЕТАЛЬНЕ ЛОГУВАННЯ кожної перевірки
-      console.log(`  🔍 Checking neighbor ${r},${c}: type="${currentType}" vs target="${type}"`);
+      // Додаємо до з'єднаних
+      connected.add(key);
+      console.log(`🛡️ SAFE_FLOATING: Connected bubble at ${r},${c}`);
       
-      // Тільки шарики того ж кольору (не stone і не undefined)
-      if (!currentType || currentType === 'stone' || currentType !== type) {
-        if (currentType !== type) {
-          console.log(`  ❌ MISMATCH: "${currentType}" !== "${type}" at ${r},${c}`);
-        }
-        return;
-      }
-      
-      console.log(`  ✅ MATCH: Adding ${r},${c} type="${currentType}" to group`);
-      visited.add(key);
-      matches.push({
-        row: r,
-        col: c,
-        type: currentType,
-        progress: 0
-      });
-      
-      // Отримуємо сусідів для шестикутної сітки
+      // Додаємо сусідів до стеку
       const isEvenRow = r % 2 === 0;
       const neighbors = [
         {r: r-1, c: isEvenRow ? c-1 : c},
@@ -1576,14 +1477,157 @@ export class BubbleShooterGame {
       ];
       
       for (const {r: nr, c: nc} of neighbors) {
-        checkNeighbor(nr, nc);
+        if (!connected.has(`${nr},${nc}`)) {
+          stack.push({r: nr, c: nc});
+        }
       }
-    };
+    }
     
-    checkNeighbor(row, col);
+    // Знаходимо плаваючі кульки
+    const floatingBubbles = [];
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        const key = `${row},${col}`;
+        
+        if (gridCopy[row][col] && 
+            !connected.has(key) && 
+            !explodingPositions.has(key)) {
+          
+          const bubbleType = gridCopy[row][col].type;
+          
+          if (bubbleType && bubbleType !== 'stone') {
+            console.log(`🛡️ SAFE_FLOATING: Found floating bubble at ${row},${col} of type "${bubbleType}"`);
+            
+            floatingBubbles.push({
+              row: row,
+              col: col,
+              type: bubbleType,
+              progress: 0
+            });
+          }
+        }
+      }
+    }
     
-    console.log(`🔍 FIND_GROUPS: Found ${matches.length} matches of type "${type}":`, matches.map(m => `${m.row},${m.col}(${m.type})`));
-    return matches;
+    console.log(`🛡️ SAFE_FLOATING: Found ${floatingBubbles.length} floating bubbles`);
+    return floatingBubbles;
+  }
+
+  // СТАРА ФУНКЦІЯ (переробляємо для використання безпечного методу)
+  checkFloatingBubbles() {
+    console.log(`⚠️ OLD_FLOATING: Using safe floating detection`);
+    
+    const floatingBubbles = this.findFloatingBubblesSafely();
+    
+    // ТІЛЬКИ ТЕПЕР видаляємо плаваючі кульки з grid (НЕ під час пошуку!)
+    floatingBubbles.forEach(bubble => {
+      if (this.grid[bubble.row] && this.grid[bubble.row][bubble.col] && 
+          this.grid[bubble.row][bubble.col].type === bubble.type) {
+        
+        console.log(`💧 REMOVING: Actually deleting floating bubble at ${bubble.row},${bubble.col} from grid`);
+        this.grid[bubble.row][bubble.col] = null;
+        this.updateActiveBubblesCache(bubble.row, bubble.col, null);
+      } else {
+        console.warn(`FLOATING: Bubble at ${bubble.row},${bubble.col} already removed or changed`);
+      }
+    });
+    
+    // Додаємо до анімації вибуху
+    if (floatingBubbles.length > 0) {
+      this.explodingBubbles = [...this.explodingBubbles, ...floatingBubbles];
+      this.score += floatingBubbles.length * 10;
+      this.updateScore();
+      
+      this.debugGridIntegrity('after_removing_floating_bubbles');
+    }
+  }
+
+  // НОВА БЕЗПЕЧНА ФУНКЦІЯ для пошуку груп БЕЗ змінення grid
+  findGroupsSafely(row, col) {
+    console.log(`🛡️ SAFE_FIND: Starting safe group search from ${row},${col}`);
+    
+    // Створюємо ПОВНУ КОПІЮ grid для безпечної роботи
+    const gridCopy = this.grid.map(row => 
+      row.map(cell => cell ? { ...cell } : null)
+    );
+    
+    // Перевіряємо що початкова клітинка існує
+    if (!gridCopy[row] || !gridCopy[row][col]) {
+      console.warn(`SAFE_FIND: No bubble at ${row},${col}`);
+      return [];
+    }
+    
+    const targetType = gridCopy[row][col].type;
+    console.log(`🛡️ SAFE_FIND: Target type is "${targetType}"`);
+    
+    // Недійсні типи не формують групи
+    if (!targetType || targetType === 'stone') {
+      console.log(`SAFE_FIND: Invalid type "${targetType}"`);
+      return [];
+    }
+    
+    // Використовуємо стек замість рекурсії для надійності
+    const stack = [{r: row, c: col}];
+    const visited = new Set();
+    const group = [];
+    
+    while (stack.length > 0) {
+      const {r, c} = stack.pop();
+      const key = `${r},${c}`;
+      
+      // Пропускаємо якщо вже відвідали
+      if (visited.has(key)) continue;
+      
+      // Перевіряємо межі
+      if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) continue;
+      
+      // Перевіряємо що клітинка існує
+      if (!gridCopy[r] || !gridCopy[r][c]) continue;
+      
+      const currentType = gridCopy[r][c].type;
+      
+      // Перевіряємо відповідність типу
+      if (currentType !== targetType) continue;
+      
+      // Додаємо до групи
+      visited.add(key);
+      group.push({
+        row: r,
+        col: c,
+        type: currentType,
+        progress: 0
+      });
+      
+      console.log(`🛡️ SAFE_FIND: Added ${r},${c} type="${currentType}" to group`);
+      
+      // Додаємо сусідів до стеку
+      const isEvenRow = r % 2 === 0;
+      const neighbors = [
+        {r: r-1, c: isEvenRow ? c-1 : c},
+        {r: r-1, c: isEvenRow ? c : c+1},
+        {r: r, c: c-1},
+        {r: r, c: c+1},
+        {r: r+1, c: isEvenRow ? c-1 : c},
+        {r: r+1, c: isEvenRow ? c : c+1}
+      ];
+      
+      for (const {r: nr, c: nc} of neighbors) {
+        if (!visited.has(`${nr},${nc}`)) {
+          stack.push({r: nr, c: nc});
+        }
+      }
+    }
+    
+    console.log(`🛡️ SAFE_FIND: Found ${group.length} bubbles of type "${targetType}":`, 
+      group.map(b => `${b.row},${b.col}`));
+    
+    return group;
+  }
+
+  // СТАРА ФУНКЦІЯ (залишаємо для сумісності, але НЕ ВИКОРИСТОВУЄМО)
+  findAndRemoveGroups(row, col) {
+    console.log(`⚠️ OLD_FIND: This function is deprecated, using safe version instead`);
+    return this.findGroupsSafely(row, col);
   }
 
   removeFloatingBubbles() {
