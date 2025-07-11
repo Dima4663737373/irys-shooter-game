@@ -62,6 +62,13 @@ export class BubbleShooterGame {
     
     this.threatRowTimer = null;
     
+    // 🔍 ГЛОБАЛЬНА СИСТЕМА МОНІТОРИНГУ GRID
+    this.gridMonitor = {
+      enabled: true,
+      operations: [],
+      maxOperations: 500
+    };
+    
     this.createGrid();
     this.loadImages().then(() => {
       this.spawnShootingBubble();
@@ -195,6 +202,73 @@ export class BubbleShooterGame {
     } catch (e) {
       console.warn('Could not play sound:', e);
     }
+  }
+
+  // 🔍 СИСТЕМА ГЛОБАЛЬНОГО МОНІТОРИНГУ GRID
+  logGridOperation(operation, row, col, oldValue, newValue, stackTrace = '') {
+    if (!this.gridMonitor.enabled) return;
+    
+    const timestamp = Date.now();
+    const operation_id = this.gridMonitor.operations.length;
+    
+    const logEntry = {
+      id: operation_id,
+      timestamp,
+      operation,
+      position: `${row},${col}`,
+      oldValue: oldValue ? oldValue.type : 'NULL',
+      newValue: newValue ? newValue.type : 'NULL',
+      stackTrace: new Error().stack.split('\n').slice(2, 5).join('\n'), // 3 рівні стеку
+      gameState: {
+        explodingCount: this.explodingBubbles.length,
+        totalBubbles: this.countTotalBubbles()
+      }
+    };
+    
+    console.log(`🔍 GRID[${operation_id}]: ${operation} at ${row},${col} | ${oldValue ? oldValue.type : 'NULL'} → ${newValue ? newValue.type : 'NULL'}`);
+    
+    this.gridMonitor.operations.push(logEntry);
+    
+    // Обмежуємо кількість операцій в пам'яті
+    if (this.gridMonitor.operations.length > this.gridMonitor.maxOperations) {
+      this.gridMonitor.operations.shift();
+    }
+  }
+
+  // Безпечне встановлення значення в grid з логуванням
+  setGridSafely(row, col, value, operation = 'SET') {
+    if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) {
+      console.error(`🚨 INVALID GRID ACCESS: ${operation} at ${row},${col} - out of bounds!`);
+      return false;
+    }
+    
+    const oldValue = this.grid[row][col];
+    this.logGridOperation(operation, row, col, oldValue, value);
+    this.grid[row][col] = value;
+    
+    // Оновлюємо кеш
+    this.updateActiveBubblesCache(row, col, value);
+    
+    return true;
+  }
+
+  // Безпечне отримання значення з grid
+  getGridSafely(row, col) {
+    if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) {
+      return null;
+    }
+    return this.grid[row][col];
+  }
+
+  // Підрахунок загальної кількості кульок
+  countTotalBubbles() {
+    let count = 0;
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        if (this.grid[row][col]) count++;
+      }
+    }
+    return count;
   }
 
   // Функція для швидких переходів в грі БЕЗ fade ефектів
@@ -1024,20 +1098,19 @@ export class BubbleShooterGame {
         
         // Remove completed explosions immediately
         if (b.progress >= 1) {
-          // Перевіряємо що шарик все ще існує перед видаленням з потрійною перевіркою
-          if (this.grid[b.row] && this.grid[b.row][b.col] && 
-              this.grid[b.row][b.col].type === b.type &&
-              b.row >= 0 && b.row < this.rows && 
-              b.col >= 0 && b.col < this.cols) {
-            
+          // Використовуємо безпечні функції з логуванням
+          const currentBubble = this.getGridSafely(b.row, b.col);
+          
+          if (currentBubble && currentBubble.type === b.type) {
             console.log(`SAFE: Removing exploded bubble at ${b.row},${b.col} of type "${b.type}"`);
-            this.grid[b.row][b.col] = null;
-            this.updateActiveBubblesCache(b.row, b.col, null); // Update cache
+            this.setGridSafely(b.row, b.col, null, 'REMOVE_EXPLODED');
           } else {
             // Детальна інформація про помилку
-            const currentBubble = this.grid[b.row] && this.grid[b.row][b.col] ? this.grid[b.row][b.col] : null;
             const currentType = currentBubble ? currentBubble.type : 'NO_BUBBLE';
-            console.error(`CRITICAL: Explosion cleanup failed at ${b.row},${b.col}! Expected: "${b.type}", Found: "${currentType}"`);
+            console.error(`🚨 CRITICAL: Explosion cleanup failed at ${b.row},${b.col}! Expected: "${b.type}", Found: "${currentType}"`);
+            
+            // Виводимо останні 10 операцій з grid для діагностики
+            console.error(`🚨 LAST 10 GRID OPERATIONS:`, this.gridMonitor.operations.slice(-10));
             
             // Перевіряємо цілісність після помилки
             this.debugGridIntegrity('after_explosion_cleanup_error');
@@ -1333,21 +1406,21 @@ export class BubbleShooterGame {
       }
       
       // Додаткова перевірка що позиція дійсно вільна
-      if (this.grid[hitRow][hitCol]) {
-        console.error(`CRITICAL: Trying to attach bubble to occupied position ${hitRow},${hitCol}! Current type: "${this.grid[hitRow][hitCol].type}"`);
+      const currentBubble = this.getGridSafely(hitRow, hitCol);
+      if (currentBubble) {
+        console.error(`🚨 CRITICAL: Trying to attach bubble to occupied position ${hitRow},${hitCol}! Current type: "${currentBubble.type}"`);
         this.gameOver();
         this.shootingBubble = null;
         return;
       }
       
       // Перевіряємо що ця позиція не в процесі вибуху
-      const positionKey = `${hitRow},${hitCol}`;
       const isExploding = this.explodingBubbles.some(bubble => 
         bubble.row === hitRow && bubble.col === hitCol
       );
       
       if (isExploding) {
-        console.error(`CRITICAL: Trying to attach bubble to exploding position ${hitRow},${hitCol}!`);
+        console.error(`🚨 CRITICAL: Trying to attach bubble to exploding position ${hitRow},${hitCol}!`);
         this.gameOver();
         this.shootingBubble = null;
         return;
@@ -1355,13 +1428,13 @@ export class BubbleShooterGame {
       
       console.log(`SAFE: Attaching ${this.shootingBubble.type} bubble to position ${hitRow},${hitCol}`);
       
-      this.grid[hitRow][hitCol] = {
+      const newBubble = {
         type: this.shootingBubble.type,
         row: hitRow,
         col: hitCol
       };
-      // Оновлюємо кеш для оптимізації FPS
-      this.updateActiveBubblesCache(hitRow, hitCol, this.grid[hitRow][hitCol]);
+      
+      this.setGridSafely(hitRow, hitCol, newBubble, 'ATTACH_BUBBLE');
       
       // Детальна перевірка сусідів перед пошуком груп
       this.debugNeighbors(hitRow, hitCol);
@@ -1521,12 +1594,11 @@ export class BubbleShooterGame {
     
     // ТІЛЬКИ ТЕПЕР видаляємо плаваючі кульки з grid (НЕ під час пошуку!)
     floatingBubbles.forEach(bubble => {
-      if (this.grid[bubble.row] && this.grid[bubble.row][bubble.col] && 
-          this.grid[bubble.row][bubble.col].type === bubble.type) {
+      const currentBubble = this.getGridSafely(bubble.row, bubble.col);
+      if (currentBubble && currentBubble.type === bubble.type) {
         
         console.log(`💧 REMOVING: Actually deleting floating bubble at ${bubble.row},${bubble.col} from grid`);
-        this.grid[bubble.row][bubble.col] = null;
-        this.updateActiveBubblesCache(bubble.row, bubble.col, null);
+        this.setGridSafely(bubble.row, bubble.col, null, 'REMOVE_FLOATING');
       } else {
         console.warn(`FLOATING: Bubble at ${bubble.row},${bubble.col} already removed or changed`);
       }
@@ -1680,18 +1752,22 @@ export class BubbleShooterGame {
     const lastRow = this.rows - 1;
     for (let row = lastRow; row > 0; row--) {
       for (let col = 0; col < this.cols; col++) {
-        this.grid[row][col] = this.grid[row - 1][col];
-        if (this.grid[row][col]) {
-          this.grid[row][col].row = row;
+        const bubbleFromAbove = this.getGridSafely(row - 1, col);
+        if (bubbleFromAbove) {
+          const movedBubble = { ...bubbleFromAbove, row: row };
+          this.setGridSafely(row, col, movedBubble, 'DROP_MOVE_DOWN');
+        } else {
+          this.setGridSafely(row, col, null, 'DROP_CLEAR_MOVED');
         }
       }
     }
     // Очищаємо перший ряд
     for (let col = 0; col < this.cols; col++) {
-      if (this.grid[0][col]) {
-        console.log(`📉 DROP: Clearing top row bubble at 0,${col} of type "${this.grid[0][col].type}"`);
+      const topBubble = this.getGridSafely(0, col);
+      if (topBubble) {
+        console.log(`📉 DROP: Clearing top row bubble at 0,${col} of type "${topBubble.type}"`);
       }
-      this.grid[0][col] = null;
+      this.setGridSafely(0, col, null, 'DROP_CLEAR_TOP');
     }
     this.bubbleGenerationCounter++;
     if (this.bubbleGenerationCounter % 5 === 0) {
@@ -1700,11 +1776,12 @@ export class BubbleShooterGame {
       for (let col = 0; col < this.cols; col++) {
         // Використовуємо нову логіку для уникнення довгих послідовностей
         const bubbleType = this.selectBubbleTypeAvoidingSequence(0, col);
-        this.grid[0][col] = {
+        const newBubble = {
           type: bubbleType,
           row: 0,
           col: col
         };
+        this.setGridSafely(0, col, newBubble, 'DROP_CREATE_NEW');
       }
     }
     this.updateColorDistribution();
