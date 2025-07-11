@@ -1158,19 +1158,33 @@ export class BubbleShooterGame {
           // Використовуємо безпечні функції з логуванням
           const currentBubble = this.getGridSafely(b.row, b.col);
           
+          // Перевіряємо чи не була вже видалена ця куля в іншому місці
           if (currentBubble && currentBubble.type === b.type) {
-            console.log(`SAFE: Removing exploded bubble at ${b.row},${b.col} of type "${b.type}"`);
+            console.log(`✅ EXPLOSION: Removing exploded bubble at ${b.row},${b.col} of type "${b.type}"`);
             this.setGridSafely(b.row, b.col, null, 'REMOVE_EXPLODED');
+          } else if (!currentBubble) {
+            console.log(`⚠️ EXPLOSION: Bubble at ${b.row},${b.col} already removed (probably floating bubble), skipping`);
           } else {
-            // Детальна інформація про помилку
-            const currentType = currentBubble ? currentBubble.type : 'NO_BUBBLE';
-            console.error(`🚨 CRITICAL: Explosion cleanup failed at ${b.row},${b.col}! Expected: "${b.type}", Found: "${currentType}"`);
+            // Справжня помилка - куля іншого типу на цій позиції
+            const currentType = currentBubble.type;
+            console.error(`🚨 CRITICAL: Explosion cleanup type mismatch at ${b.row},${b.col}! Expected: "${b.type}", Found: "${currentType}"`);
             
-            // Виводимо останні 10 операцій з grid для діагностики
-            console.error(`🚨 LAST 10 GRID OPERATIONS:`, this.gridMonitor.operations.slice(-10));
+            // Виводимо останні операції для діагностики
+            console.error(`🚨 EXPLOSION ERROR - Last 15 grid operations:`, this.gridMonitor.operations.slice(-15));
             
-            // Перевіряємо цілісність після помилки
-            this.debugGridIntegrity('after_explosion_cleanup_error');
+            // Показуємо детальну інформацію про проблемну позицію
+            console.error(`🚨 EXPLOSION ERROR - Exploding bubble details:`, {
+              row: b.row,
+              col: b.col,
+              expectedType: b.type,
+              actualType: currentType,
+              progress: b.progress
+            });
+            
+            // НЕ видаляємо кулю якщо вона іншого типу - це може пошкодити гру
+            console.error(`🚨 EXPLOSION ERROR: NOT removing bubble due to type mismatch!`);
+            
+            this.debugGridIntegrity('after_explosion_type_mismatch');
           }
           this.explodingBubbles.splice(i, 1);
         }
@@ -1645,29 +1659,39 @@ export class BubbleShooterGame {
 
   // СТАРА ФУНКЦІЯ (переробляємо для використання безпечного методу)
   checkFloatingBubbles() {
-    console.log(`⚠️ OLD_FLOATING: Using safe floating detection`);
+    console.log(`🆕 NEW VERSION: checkFloatingBubbles v2.0 - Using safe floating detection`);
     
     const floatingBubbles = this.findFloatingBubblesSafely();
     
-    // ТІЛЬКИ ТЕПЕР видаляємо плаваючі кульки з grid (НЕ під час пошуку!)
-    floatingBubbles.forEach(bubble => {
-      const currentBubble = this.getGridSafely(bubble.row, bubble.col);
-      if (currentBubble && currentBubble.type === bubble.type) {
-        
-        console.log(`💧 REMOVING: Actually deleting floating bubble at ${bubble.row},${bubble.col} from grid`);
-        this.setGridSafely(bubble.row, bubble.col, null, 'REMOVE_FLOATING');
-      } else {
-        console.warn(`FLOATING: Bubble at ${bubble.row},${bubble.col} already removed or changed`);
-      }
-    });
-    
-    // Додаємо до анімації вибуху
     if (floatingBubbles.length > 0) {
-      this.explodingBubbles = [...this.explodingBubbles, ...floatingBubbles];
-      this.score += floatingBubbles.length * 10;
-      this.updateScore();
+      console.log(`🔍 FLOATING: Found ${floatingBubbles.length} floating bubbles to animate removal`);
       
-      this.debugGridIntegrity('after_removing_floating_bubbles');
+      // КРИТИЧНО ВАЖЛИВО: НЕ видаляємо кулі з grid тут!
+      // Тільки додаємо до анімації вибуху - фізичне видалення буде в loop()
+      const validFloatingBubbles = floatingBubbles.filter(bubble => {
+        const currentBubble = this.getGridSafely(bubble.row, bubble.col);
+        if (currentBubble && currentBubble.type === bubble.type) {
+          console.log(`✅ FLOATING: Valid floating bubble at ${bubble.row},${bubble.col} type="${bubble.type}" - ADDING TO ANIMATION ONLY`);
+          return true;
+        } else {
+          const actualType = currentBubble ? currentBubble.type : 'NO_BUBBLE';
+          console.warn(`❌ FLOATING: Invalid floating bubble at ${bubble.row},${bubble.col} - expected "${bubble.type}", found "${actualType}"`);
+          return false;
+        }
+      });
+      
+      if (validFloatingBubbles.length > 0) {
+        // ТІЛЬКИ додаємо до анімації - НЕ ВИДАЛЯЄМО З GRID!
+        // Видалення буде один раз в loop() після завершення анімації
+        this.explodingBubbles = [...this.explodingBubbles, ...validFloatingBubbles];
+        this.score += validFloatingBubbles.length * 10;
+        this.updateScore();
+        
+        console.log(`💫 FLOATING: Added ${validFloatingBubbles.length} floating bubbles to explosion animation - NO GRID DELETION HERE`);
+        this.debugGridIntegrity('after_adding_floating_to_explosion');
+      }
+    } else {
+      console.log(`ℹ️ FLOATING: No floating bubbles found`);
     }
   }
 
