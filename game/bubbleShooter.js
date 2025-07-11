@@ -74,6 +74,11 @@ export class BubbleShooterGame {
       this.spawnShootingBubble();
     });
     this.initSounds();
+    
+    // Робимо гру доступною глобально для відладки
+    if (typeof window !== 'undefined') {
+      window.debugGame = this;
+    }
   }
 
   async loadImages() {
@@ -269,6 +274,58 @@ export class BubbleShooterGame {
       }
     }
     return count;
+  }
+
+  // Функція для швидкого аналізу проблем (викликати в консолі: game.analyzeGridProblem())
+  analyzeGridProblem() {
+    console.log('🔍 PROBLEM ANALYSIS REPORT:');
+    console.log('============================');
+    
+    // Останні 20 операцій
+    console.log('📋 LAST 20 GRID OPERATIONS:');
+    const recentOps = this.gridMonitor.operations.slice(-20);
+    recentOps.forEach(op => {
+      console.log(`[${op.id}] ${op.operation} at ${op.position}: ${op.oldValue} → ${op.newValue}`);
+    });
+    
+    // Поточний стан grid
+    console.log('\n🎯 CURRENT GRID STATE:');
+    for (let row = 0; row < this.rows; row++) {
+      const rowData = [];
+      for (let col = 0; col < this.cols; col++) {
+        const bubble = this.grid[row][col];
+        rowData.push(bubble ? bubble.type.substring(0,2) : '  ');
+      }
+      console.log(`Row ${row.toString().padStart(2)}: [${rowData.join('|')}]`);
+    }
+    
+    // Кульки що вибухають
+    console.log(`\n💥 EXPLODING BUBBLES (${this.explodingBubbles.length}):`);
+    this.explodingBubbles.forEach(bubble => {
+      console.log(`  ${bubble.row},${bubble.col} (${bubble.type}) - progress: ${bubble.progress.toFixed(2)}`);
+    });
+    
+    // Пошук невідповідностей
+    console.log('\n🚨 LOOKING FOR MISMATCHES:');
+    let mismatches = 0;
+    this.explodingBubbles.forEach(exploding => {
+      const gridBubble = this.getGridSafely(exploding.row, exploding.col);
+      if (gridBubble && gridBubble.type !== exploding.type) {
+        console.error(`  MISMATCH at ${exploding.row},${exploding.col}: exploding="${exploding.type}" vs grid="${gridBubble.type}"`);
+        mismatches++;
+      }
+    });
+    
+    if (mismatches === 0) {
+      console.log('  ✅ No mismatches found');
+    }
+    
+    return {
+      recentOperations: recentOps,
+      explodingBubbles: this.explodingBubbles,
+      mismatches: mismatches,
+      totalBubbles: this.countTotalBubbles()
+    };
   }
 
   // Функція для швидких переходів в грі БЕЗ fade ефектів
