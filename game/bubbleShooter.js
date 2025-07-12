@@ -209,124 +209,7 @@ export class BubbleShooterGame {
     }
   }
 
-  // 🔍 СИСТЕМА ГЛОБАЛЬНОГО МОНІТОРИНГУ GRID
-  logGridOperation(operation, row, col, oldValue, newValue, stackTrace = '') {
-    if (!this.gridMonitor.enabled) return;
-    
-    const timestamp = Date.now();
-    const operation_id = this.gridMonitor.operations.length;
-    
-    const logEntry = {
-      id: operation_id,
-      timestamp,
-      operation,
-      position: `${row},${col}`,
-      oldValue: oldValue ? oldValue.type : 'NULL',
-      newValue: newValue ? newValue.type : 'NULL',
-      stackTrace: new Error().stack.split('\n').slice(2, 5).join('\n'), // 3 рівні стеку
-      gameState: {
-        explodingCount: this.explodingBubbles.length,
-        totalBubbles: this.countTotalBubbles()
-      }
-    };
-    
-    console.log(`🔍 GRID[${operation_id}]: ${operation} at ${row},${col} | ${oldValue ? oldValue.type : 'NULL'} → ${newValue ? newValue.type : 'NULL'}`);
-    
-    this.gridMonitor.operations.push(logEntry);
-    
-    // Обмежуємо кількість операцій в пам'яті
-    if (this.gridMonitor.operations.length > this.gridMonitor.maxOperations) {
-      this.gridMonitor.operations.shift();
-    }
-  }
 
-  // Безпечне встановлення значення в grid з логуванням
-  setGridSafely(row, col, value, operation = 'SET') {
-    if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) {
-      console.error(`🚨 INVALID GRID ACCESS: ${operation} at ${row},${col} - out of bounds!`);
-      return false;
-    }
-    
-    const oldValue = this.grid[row][col];
-    this.logGridOperation(operation, row, col, oldValue, value);
-    this.grid[row][col] = value;
-    
-    // Оновлюємо кеш
-    this.updateActiveBubblesCache(row, col, value);
-    
-    return true;
-  }
-
-  // Безпечне отримання значення з grid
-  getGridSafely(row, col) {
-    if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) {
-      return null;
-    }
-    return this.grid[row][col];
-  }
-
-  // Підрахунок загальної кількості кульок
-  countTotalBubbles() {
-    let count = 0;
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        if (this.grid[row][col]) count++;
-      }
-    }
-    return count;
-  }
-
-  // Функція для швидкого аналізу проблем (викликати в консолі: game.analyzeGridProblem())
-  analyzeGridProblem() {
-    console.log('🔍 PROBLEM ANALYSIS REPORT:');
-    console.log('============================');
-    
-    // Останні 20 операцій
-    console.log('📋 LAST 20 GRID OPERATIONS:');
-    const recentOps = this.gridMonitor.operations.slice(-20);
-    recentOps.forEach(op => {
-      console.log(`[${op.id}] ${op.operation} at ${op.position}: ${op.oldValue} → ${op.newValue}`);
-    });
-    
-    // Поточний стан grid
-    console.log('\n🎯 CURRENT GRID STATE:');
-    for (let row = 0; row < this.rows; row++) {
-      const rowData = [];
-      for (let col = 0; col < this.cols; col++) {
-        const bubble = this.grid[row][col];
-        rowData.push(bubble ? bubble.type.substring(0,2) : '  ');
-      }
-      console.log(`Row ${row.toString().padStart(2)}: [${rowData.join('|')}]`);
-    }
-    
-    // Кульки що вибухають
-    console.log(`\n💥 EXPLODING BUBBLES (${this.explodingBubbles.length}):`);
-    this.explodingBubbles.forEach(bubble => {
-      console.log(`  ${bubble.row},${bubble.col} (${bubble.type}) - progress: ${bubble.progress.toFixed(2)}`);
-    });
-    
-    // Пошук невідповідностей
-    console.log('\n🚨 LOOKING FOR MISMATCHES:');
-    let mismatches = 0;
-    this.explodingBubbles.forEach(exploding => {
-      const gridBubble = this.getGridSafely(exploding.row, exploding.col);
-      if (gridBubble && gridBubble.type !== exploding.type) {
-        console.error(`  MISMATCH at ${exploding.row},${exploding.col}: exploding="${exploding.type}" vs grid="${gridBubble.type}"`);
-        mismatches++;
-      }
-    });
-    
-    if (mismatches === 0) {
-      console.log('  ✅ No mismatches found');
-    }
-    
-    return {
-      recentOperations: recentOps,
-      explodingBubbles: this.explodingBubbles,
-      mismatches: mismatches,
-      totalBubbles: this.countTotalBubbles()
-    };
-  }
 
   // Функція для швидких переходів в грі БЕЗ fade ефектів
   smoothGameTransition(newContent, callback = null) {
@@ -357,54 +240,54 @@ export class BubbleShooterGame {
     `;
 
     this.smoothGameTransition(content, () => {
-      // Додаємо hover ефекти та звуки
-      const buttons = this.container.querySelectorAll('button');
+    // Додаємо hover ефекти та звуки
+    const buttons = this.container.querySelectorAll('button');
       console.log(`Found ${buttons.length} buttons for mode selection`);
       buttons.forEach((button, index) => {
         console.log(`Adding hover events to button ${index}: ${button.id}`);
-        button.onmouseover = () => {
+      button.onmouseover = () => {
           console.log(`Button ${button.id} hovered`);
-          this.playSound('menu');
-          button.style.transform = 'scale(1.05) translateY(-2px)';
-          button.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)';
-        };
-        button.onmouseout = () => {
-          button.style.transform = 'scale(1) translateY(0)';
-          button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-        };
-      });
-
-      this.container.querySelector('#endless-mode').onclick = () => {
-        this.playSound('start');
-        this.animateStartTransition(() => {
-          this.gameMode = 'endless';
-          this.init();
-        });
-      };
-      
-      this.container.querySelector('#timed-mode').onclick = () => {
-        this.playSound('start');
-        this.animateStartTransition(() => {
-          this.gameMode = 'timed';
-          this.timeLeft = 60;
-      this.init();
-        });
-      };
-
-      this.container.querySelector('#back-to-menu').onclick = () => {
         this.playSound('menu');
-        if (typeof window.showMainMenu === 'function') {
-          window.showMainMenu();
-        }
+        button.style.transform = 'scale(1.05) translateY(-2px)';
+        button.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)';
       };
+      button.onmouseout = () => {
+        button.style.transform = 'scale(1) translateY(0)';
+        button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+      };
+    });
 
-      // Додаємо анімацію плаваючих кульок
-      this.startFloatingBubblesAnimation();
+    this.container.querySelector('#endless-mode').onclick = () => {
+      this.playSound('start');
+      this.animateStartTransition(() => {
+        this.gameMode = 'endless';
+        this.init();
+      });
+    };
+    
+    this.container.querySelector('#timed-mode').onclick = () => {
+      this.playSound('start');
+      this.animateStartTransition(() => {
+        this.gameMode = 'timed';
+        this.timeLeft = 60;
+    this.init();
+      });
+    };
 
-      // Встановлюємо фон через main.js
-      if (typeof window.setGlobalBackground === 'function') {
-        window.setGlobalBackground();
+    this.container.querySelector('#back-to-menu').onclick = () => {
+      this.playSound('menu');
+      if (typeof window.showMainMenu === 'function') {
+        window.showMainMenu();
       }
+    };
+
+    // Додаємо анімацію плаваючих кульок
+    this.startFloatingBubblesAnimation();
+
+    // Встановлюємо фон через main.js
+    if (typeof window.setGlobalBackground === 'function') {
+      window.setGlobalBackground();
+    }
     });
   }
 
@@ -504,21 +387,21 @@ export class BubbleShooterGame {
     `;
 
     this.smoothGameTransition(content, () => {
-      this.canvas = this.container.querySelector('#game-canvas');
-      this.ctx = this.canvas.getContext('2d');
-      this.pauseMenu = this.container.querySelector('#pause-menu');
-      this.gameOverMenu = this.container.querySelector('#game-over');
-      this.scoreEl = this.container.querySelector('#score');
-      this.timerEl = this.gameMode === 'timed' ? this.container.querySelector('#timer') : null;
-      this.playAreaWidth = playAreaWidth;
-      this.sidePadding = sidePadding;
-      this.shooterY = gameHeight - this.bubbleRadius * 1.5; // Опускаємо стрілець трохи нижче
-      this.addEventListeners();
-      this.createGrid();
-      this.spawnShootingBubble();
-      this.difficultyMultiplier = 1;
-      if (this.difficultyInterval) clearInterval(this.difficultyInterval);
-      this.startGame();
+    this.canvas = this.container.querySelector('#game-canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.pauseMenu = this.container.querySelector('#pause-menu');
+    this.gameOverMenu = this.container.querySelector('#game-over');
+    this.scoreEl = this.container.querySelector('#score');
+    this.timerEl = this.gameMode === 'timed' ? this.container.querySelector('#timer') : null;
+    this.playAreaWidth = playAreaWidth;
+    this.sidePadding = sidePadding;
+    this.shooterY = gameHeight - this.bubbleRadius * 1.5; // Опускаємо стрілець трохи нижче
+    this.addEventListeners();
+    this.createGrid();
+    this.spawnShootingBubble();
+    this.difficultyMultiplier = 1;
+    if (this.difficultyInterval) clearInterval(this.difficultyInterval);
+    this.startGame();
     });
   }
 
@@ -537,7 +420,7 @@ export class BubbleShooterGame {
     for (let row = 0; row < this.rows; row++) {
       this.grid[row] = [];
       for (let col = 0; col < this.cols; col++) {
-        this.grid[row][col] = null;
+        this.grid[row][col] = null; // Initial null setup is OK
       }
     }
     // Генеруємо на 3 ряди менше для вищого розташування
@@ -562,6 +445,7 @@ export class BubbleShooterGame {
           row: row,
           col: col
         };
+        this.updateActiveBubblesCache(row, col, this.grid[row][col]);
         placed++;
         console.log('STONE placed at', row, col);
       }
@@ -588,6 +472,7 @@ export class BubbleShooterGame {
             row: row,
             col: col
           };
+          this.updateActiveBubblesCache(row, col, this.grid[row][col]);
         }
       }
     }
@@ -613,6 +498,7 @@ export class BubbleShooterGame {
             row: row,
             col: col
           };
+          this.updateActiveBubblesCache(row, col, this.grid[row][col]);
         }
       }
     }
@@ -892,6 +778,7 @@ export class BubbleShooterGame {
         row: 0,
         col: col
       };
+      this.updateActiveBubblesCache(0, col, this.grid[0][col]);
     }
   }
 
@@ -906,6 +793,7 @@ export class BubbleShooterGame {
       row: 0,
       col: centerCol
     };
+    this.updateActiveBubblesCache(0, centerCol, this.grid[0][centerCol]);
     
     // Бокові кульки
     if (centerCol > 0) {
@@ -914,6 +802,7 @@ export class BubbleShooterGame {
         row: 0,
         col: centerCol - 1
       };
+      this.updateActiveBubblesCache(0, centerCol - 1, this.grid[0][centerCol - 1]);
     }
     if (centerCol < this.cols - 1) {
       this.grid[0][centerCol + 1] = {
@@ -921,6 +810,7 @@ export class BubbleShooterGame {
         row: 0,
         col: centerCol + 1
       };
+      this.updateActiveBubblesCache(0, centerCol + 1, this.grid[0][centerCol + 1]);
     }
   }
 
@@ -939,6 +829,7 @@ export class BubbleShooterGame {
         row: 0,
         col: col
       };
+      this.updateActiveBubblesCache(0, col, this.grid[0][col]);
     }
   }
 
@@ -956,6 +847,7 @@ export class BubbleShooterGame {
           row: 0,
           col: col
         };
+        this.updateActiveBubblesCache(0, col, this.grid[0][col]);
       }
     }
   }
@@ -969,6 +861,7 @@ export class BubbleShooterGame {
         row: 0,
         col: col
       };
+      this.updateActiveBubblesCache(0, col, this.grid[0][col]);
     }
   }
 
@@ -1026,6 +919,8 @@ export class BubbleShooterGame {
       dy: 0,
       moving: false
     };
+    // Ініціалізуємо кут прицілювання прямо вгору
+    this.shootingAngle = Math.PI / 2; // 90 градусів (вгору)
   }
 
   aim(e) {
@@ -1058,8 +953,15 @@ export class BubbleShooterGame {
     
     const speed = 850; // Збільшуємо швидкість з 780 до 850 для кращого відчуття
     this.shootingBubble.dx = Math.cos(this.shootingAngle) * speed;
-    this.shootingBubble.dy = -Math.sin(Math.abs(this.shootingAngle)) * speed; // Negative for upward movement
+    this.shootingBubble.dy = -Math.sin(this.shootingAngle) * speed; // Negative for upward movement
     this.shootingBubble.moving = true;
+    
+    console.log('Shooting bubble:', {
+      angle: this.shootingAngle,
+      dx: this.shootingBubble.dx,
+      dy: this.shootingBubble.dy,
+      position: { x: this.shootingBubble.x, y: this.shootingBubble.y }
+    });
   }
 
   startGame() {
@@ -1129,67 +1031,7 @@ export class BubbleShooterGame {
       }
     }
     
-    // Update explosion animations with optimized deltaTime
-    if (this.explodingBubbles.length > 0) {
-      const explosionSpeed = deltaTime * 5.0; // Прискорюємо анімацію
-      
-      for (let i = this.explodingBubbles.length - 1; i >= 0; i--) {
-        const b = this.explodingBubbles[i];
-        b.progress += explosionSpeed;
-        
-        // Create particles only once at start
-        if (b.progress < 0.15 && !b.particlesCreated) {
-          const {x, y} = this.gridToPixel(b.row, b.col);
-          // Отримуємо колір для типу кулі
-          const colors = {
-            'blue': '#4A90E2',
-            'red': '#E74C3C',
-            'yellow': '#F1C40F',
-            'kyan': '#1ABC9C',
-            'heart': '#FF69B4'
-          };
-          const color = colors[b.type] || '#999999';
-          this.createParticles(x, y, color, 6); // Fewer particles for performance
-          b.particlesCreated = true;
-        }
-        
-        // Remove completed explosions immediately
-        if (b.progress >= 1) {
-          // Використовуємо безпечні функції з логуванням
-          const currentBubble = this.getGridSafely(b.row, b.col);
-          
-          // Перевіряємо чи не була вже видалена ця куля в іншому місці
-          if (currentBubble && currentBubble.type === b.type) {
-            console.log(`✅ EXPLOSION: Removing exploded bubble at ${b.row},${b.col} of type "${b.type}"`);
-            this.setGridSafely(b.row, b.col, null, 'REMOVE_EXPLODED');
-          } else if (!currentBubble) {
-            console.log(`⚠️ EXPLOSION: Bubble at ${b.row},${b.col} already removed (probably floating bubble), skipping`);
-          } else {
-            // Справжня помилка - куля іншого типу на цій позиції
-            const currentType = currentBubble.type;
-            console.error(`🚨 CRITICAL: Explosion cleanup type mismatch at ${b.row},${b.col}! Expected: "${b.type}", Found: "${currentType}"`);
-            
-            // Виводимо останні операції для діагностики
-            console.error(`🚨 EXPLOSION ERROR - Last 15 grid operations:`, this.gridMonitor.operations.slice(-15));
-            
-            // Показуємо детальну інформацію про проблемну позицію
-            console.error(`🚨 EXPLOSION ERROR - Exploding bubble details:`, {
-              row: b.row,
-              col: b.col,
-              expectedType: b.type,
-              actualType: currentType,
-              progress: b.progress
-            });
-            
-            // НЕ видаляємо кулю якщо вона іншого типу - це може пошкодити гру
-            console.error(`🚨 EXPLOSION ERROR: NOT removing bubble due to type mismatch!`);
-            
-            this.debugGridIntegrity('after_explosion_type_mismatch');
-          }
-          this.explodingBubbles.splice(i, 1);
-        }
-      }
-    }
+    // ВИДАЛЕНО: Логіка explodingBubbles більше не потрібна
     
     // Clear canvas once per frame
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -1222,15 +1064,8 @@ export class BubbleShooterGame {
       for (let col = 0; col < this.cols; col++) {
         const bubble = this.grid[row][col];
         if (bubble) {
-          // Якщо кулька вибухає — малюємо з анімацією
-          const exploding = this.explodingBubbles.find(b => b.row === row && b.col === col);
-          if (exploding) {
-            const { x, y } = this.gridToPixel(row, col);
-            this.drawBubbleAnimated(x, y, bubble.type, exploding.progress);
-          } else {
           const { x, y } = this.gridToPixel(row, col);
-            this.drawBubble(x, y, bubble.type);
-          }
+          this.drawBubble(x, y, bubble.type);
         }
       }
     }
@@ -1299,18 +1134,7 @@ export class BubbleShooterGame {
     this.ctx.restore();
   }
 
-  drawBubbleAnimated(x, y, type, progress) {
-    this.ctx.save();
-    // Easing: scale та opacity
-    const scale = 1 + 0.5 * Math.sin(Math.PI * progress);
-    const alpha = 1 - progress;
-    this.ctx.globalAlpha = alpha;
-    this.ctx.translate(x, y);
-    this.ctx.scale(scale, scale);
-    this.ctx.translate(-x, -y);
-    this.drawBubble(x, y, type);
-    this.ctx.restore();
-  }
+
 
   gridToPixel(row, col) {
     const evenRow = row % 2 === 0;
@@ -1395,6 +1219,7 @@ export class BubbleShooterGame {
       if (col >= 0 && col < this.cols && !this.grid[0][col]) {
         this.attachBubbleToGrid(0, col);
       } else {
+        this.shootingBubble = null;
         this.gameOver();
       }
       return;
@@ -1456,8 +1281,9 @@ export class BubbleShooterGame {
           this.attachBubbleToGrid(fallbackRow, collision.col);
           return;
         }
-        this.gameOver();
+        // Куля не може бути розміщена - видаляємо її і завершуємо гру
         this.shootingBubble = null;
+        this.gameOver();
         return;
       }
     }
@@ -1471,322 +1297,225 @@ export class BubbleShooterGame {
   attachBubbleToGrid(hitRow, hitCol) {
     if (hitRow >= 0 && hitRow < this.rows && hitCol >= 0 && hitCol < this.cols) {
       if (hitRow >= this.rows - this.allowedBottomRows) {
-        this.gameOver();
         this.shootingBubble = null;
+        this.gameOver();
         return;
       }
       
-      // Додаткова перевірка що позиція дійсно вільна
-      const currentBubble = this.getGridSafely(hitRow, hitCol);
-      if (currentBubble) {
-        console.error(`🚨 CRITICAL: Trying to attach bubble to occupied position ${hitRow},${hitCol}! Current type: "${currentBubble.type}"`);
-        this.gameOver();
+      // Перевіряємо що позиція вільна
+      if (this.grid[hitRow][hitCol]) {
         this.shootingBubble = null;
+        this.gameOver();
         return;
       }
       
-      // Перевіряємо що ця позиція не в процесі вибуху
-      const isExploding = this.explodingBubbles.some(bubble => 
-        bubble.row === hitRow && bubble.col === hitCol
-      );
-      
-      if (isExploding) {
-        console.error(`🚨 CRITICAL: Trying to attach bubble to exploding position ${hitRow},${hitCol}!`);
-        this.gameOver();
-        this.shootingBubble = null;
-        return;
-      }
-      
-      console.log(`SAFE: Attaching ${this.shootingBubble.type} bubble to position ${hitRow},${hitCol}`);
-      
-      const newBubble = {
+      // Розміщуємо кулю в grid
+      this.grid[hitRow][hitCol] = {
         type: this.shootingBubble.type,
         row: hitRow,
         col: hitCol
       };
+      this.updateActiveBubblesCache(hitRow, hitCol, this.grid[hitRow][hitCol]);
       
-      this.setGridSafely(hitRow, hitCol, newBubble, 'ATTACH_BUBBLE');
+      // ПРОФЕСІЙНИЙ BFS АЛГОРИТМ - знаходимо групу одного кольору (≥3)
+      const connectedGroup = this.findConnectedGroup(hitRow, hitCol);
       
-      // Детальна перевірка сусідів перед пошуком груп
-      this.debugNeighbors(hitRow, hitCol);
-      
-      // Використовуємо НОВУ БЕЗПЕЧНУ функцію пошуку груп
-      const matches = this.findGroupsSafely(hitRow, hitCol);
-      
-      // console.log(`attachBubbleToGrid: Found ${matches.length} matches for bubble type "${this.grid[hitRow][hitCol].type}" at ${hitRow},${hitCol}`);
-      
-      if (matches.length >= 3) {
+      if (connectedGroup.length >= 3) {
         this.playSound('pop');
-        let points = 0;
-        if (matches.length === 3) points = 30;
-        else if (matches.length === 4) points = 50;
-        else if (matches.length >= 5) points = 100;
-        this.score += points;
-        // Оновлюємо лічильники
-        this.consecutiveHits++;
-        this.updateDifficulty();
+        this.score += connectedGroup.length * 10;
         this.updateScore();
         
-        // Підготовка ефекту вибуху БЕЗ видалення з grid (це робиться пізніше в loop)
-        // Фільтруємо тільки дійсні шарики
-        const validMatches = matches.filter((match) => {
-          // Подвійна перевірка що це правильний тип і позиція
-          if (this.grid[match.row] && this.grid[match.row][match.col] && 
-              this.grid[match.row][match.col].type === match.type) {
-            
-            match.explosionDelay = Math.random() * 0.2;
-            match.particlesCreated = false; // Для оптимізації
-            
-            console.log(`Preparing explosion for bubble at ${match.row},${match.col} of type "${match.type}"`);
-            
-            // НЕ видаляємо тут! Це робиться в loop() після анімації
-            return true;
-          } else {
-            console.warn(`Skipping invalid match at ${match.row},${match.col} - bubble type mismatch`);
-            return false;
-          }
+        // МИТТЄВО видаляємо групу з grid
+        connectedGroup.forEach(pos => {
+          this.grid[pos.row][pos.col] = null;
+          this.updateActiveBubblesCache(pos.row, pos.col, null);
         });
         
-        // ДОДАЄМО до існуючих explodingBubbles замість заміни
-        this.explodingBubbles = [...this.explodingBubbles, ...validMatches];
+        // Знаходимо плаваючі кулі
+        const floatingBubbles = this.findFloatingBubbles();
         
-        // Перевіряємо цілісність після додавання групи до вибуху
-        this.debugGridIntegrity('after_adding_exploding_group');
+        // МИТТЄВО видаляємо плаваючі кулі
+        floatingBubbles.forEach(pos => {
+          this.grid[pos.row][pos.col] = null;
+          this.updateActiveBubblesCache(pos.row, pos.col, null);
+        });
         
-        this.checkFloatingBubbles();
+        this.score += floatingBubbles.length * 5;
+        this.updateScore();
+        
+        // Створюємо візуальні ефекти
+        this.createExplosionEffects([...connectedGroup, ...floatingBubbles]);
+        
+        this.consecutiveHits++;
+        this.updateDifficulty();
       } else {
-        // Reset consecutive hits if no match
         this.consecutiveHits = 0;
-        // console.log('No valid group found (less than 3 bubbles)');
       }
-      // Оновлюємо розподіл кольорів
+      
       this.updateColorDistribution();
+      this.shootingBubble = null;
       this.spawnShootingBubble();
     }
   }
 
-  // НОВА БЕЗПЕЧНА ФУНКЦІЯ для пошуку плаваючих кульок
-  findFloatingBubblesSafely() {
-    console.log(`🛡️ SAFE_FLOATING: Starting safe floating bubble detection`);
+  // ПРОФЕСІЙНИЙ BFS АЛГОРИТМ для пошуку груп одного кольору
+  // Базується на алгоритмах з rembound.com та GitHub проектів
+  findConnectedGroup(row, col) {
+    const bubble = this.grid[row][col];
+    if (!bubble || bubble.type === 'stone') return [];
     
-    // Створюємо ПОВНУ КОПІЮ grid
-    const gridCopy = this.grid.map(row => 
-      row.map(cell => cell ? { ...cell } : null)
-    );
+    const targetType = bubble.type;
+    const toProcess = [{row, col}];
+    const processed = new Set();
+    const foundCluster = [];
     
-    // Створюємо множину шариків що вибухають
-    const explodingPositions = new Set();
-    this.explodingBubbles.forEach(bubble => {
-      explodingPositions.add(`${bubble.row},${bubble.col}`);
-    });
+    // Позначаємо початкову кулю як оброблену
+    processed.add(`${row},${col}`);
     
-    // Використовуємо стек для знаходження з'єднаних кульок
-    const connected = new Set();
-    const stack = [];
-    
-    // Додаємо всі кульки з верхнього ряду до стеку
-    for (let col = 0; col < this.cols; col++) {
-      if (gridCopy[0][col] && !explodingPositions.has(`0,${col}`)) {
-        stack.push({r: 0, c: col});
-      }
-    }
-    
-    // Проходимо всі з'єднані кульки
-    while (stack.length > 0) {
-      const {r, c} = stack.pop();
-      const key = `${r},${c}`;
-      
-      // Пропускаємо якщо вже відвідали
-      if (connected.has(key)) continue;
+    while (toProcess.length > 0) {
+      const currentTile = toProcess.pop();
+      const {row: currentRow, col: currentCol} = currentTile;
       
       // Перевіряємо межі
-      if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) continue;
-      
-      // Перевіряємо що клітинка існує і не вибухає
-      if (!gridCopy[r][c] || explodingPositions.has(key)) continue;
-      
-      // Додаємо до з'єднаних
-      connected.add(key);
-      console.log(`🛡️ SAFE_FLOATING: Connected bubble at ${r},${c}`);
-      
-      // Додаємо сусідів до стеку
-      const isEvenRow = r % 2 === 0;
-      const neighbors = [
-        {r: r-1, c: isEvenRow ? c-1 : c},
-        {r: r-1, c: isEvenRow ? c : c+1},
-        {r: r, c: c-1},
-        {r: r, c: c+1},
-        {r: r+1, c: isEvenRow ? c-1 : c},
-        {r: r+1, c: isEvenRow ? c : c+1}
-      ];
-      
-      for (const {r: nr, c: nc} of neighbors) {
-        if (!connected.has(`${nr},${nc}`)) {
-          stack.push({r: nr, c: nc});
-        }
+      if (currentRow < 0 || currentRow >= this.rows || currentCol < 0 || currentCol >= this.cols) {
+        continue;
       }
-    }
-    
-    // Знаходимо плаваючі кульки
-    const floatingBubbles = [];
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        const key = `${row},${col}`;
+      
+      const currentBubble = this.grid[currentRow][currentCol];
+      
+      // Пропускаємо пусті кулі
+      if (!currentBubble || currentBubble.type === null) {
+        continue;
+      }
+      
+      // Перевіряємо, чи має куля ТОЧНО ТАКИЙ САМИЙ тип
+      if (currentBubble.type === targetType) {
+        // Додаємо кулю до кластера
+        foundCluster.push({row: currentRow, col: currentCol});
         
-        if (gridCopy[row][col] && 
-            !connected.has(key) && 
-            !explodingPositions.has(key)) {
-          
-          const bubbleType = gridCopy[row][col].type;
-          
-          if (bubbleType && bubbleType !== 'stone') {
-            console.log(`🛡️ SAFE_FLOATING: Found floating bubble at ${row},${col} of type "${bubbleType}"`);
-            
-            floatingBubbles.push({
-              row: row,
-              col: col,
-              type: bubbleType,
-              progress: 0
-            });
+        // Отримуємо сусідів поточної кулі
+        const neighbors = this.getNeighbors(currentRow, currentCol);
+        
+        // Перевіряємо кожного сусіда
+        for (const neighbor of neighbors) {
+          const neighborKey = `${neighbor.r},${neighbor.c}`;
+          if (!processed.has(neighborKey)) {
+            // Додаємо сусіда до черги обробки
+            toProcess.push({row: neighbor.r, col: neighbor.c});
+            processed.add(neighborKey);
           }
         }
       }
     }
     
-    console.log(`🛡️ SAFE_FLOATING: Found ${floatingBubbles.length} floating bubbles`);
-    return floatingBubbles;
+    return foundCluster;
   }
-
-  // СТАРА ФУНКЦІЯ (переробляємо для використання безпечного методу)
-  checkFloatingBubbles() {
-    console.log(`🆕 NEW VERSION: checkFloatingBubbles v2.0 - Using safe floating detection`);
+  
+  // ПРОФЕСІЙНИЙ АЛГОРИТМ для пошуку плаваючих куль
+  // Базується на алгоритмах з rembound.com та GitHub проектів
+  findFloatingBubbles() {
+    const processed = new Set();
+    const foundFloatingBubbles = [];
     
-    const floatingBubbles = this.findFloatingBubblesSafely();
-    
-    if (floatingBubbles.length > 0) {
-      console.log(`🔍 FLOATING: Found ${floatingBubbles.length} floating bubbles to animate removal`);
-      
-      // КРИТИЧНО ВАЖЛИВО: НЕ видаляємо кулі з grid тут!
-      // Тільки додаємо до анімації вибуху - фізичне видалення буде в loop()
-      const validFloatingBubbles = floatingBubbles.filter(bubble => {
-        const currentBubble = this.getGridSafely(bubble.row, bubble.col);
-        if (currentBubble && currentBubble.type === bubble.type) {
-          console.log(`✅ FLOATING: Valid floating bubble at ${bubble.row},${bubble.col} type="${bubble.type}" - ADDING TO ANIMATION ONLY`);
-          return true;
-        } else {
-          const actualType = currentBubble ? currentBubble.type : 'NO_BUBBLE';
-          console.warn(`❌ FLOATING: Invalid floating bubble at ${bubble.row},${bubble.col} - expected "${bubble.type}", found "${actualType}"`);
-          return false;
-        }
-      });
-      
-      if (validFloatingBubbles.length > 0) {
-        // ТІЛЬКИ додаємо до анімації - НЕ ВИДАЛЯЄМО З GRID!
-        // Видалення буде один раз в loop() після завершення анімації
-        this.explodingBubbles = [...this.explodingBubbles, ...validFloatingBubbles];
-        this.score += validFloatingBubbles.length * 10;
-        this.updateScore();
+    // Перевіряємо всі кулі в grid
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        const bubble = this.grid[row][col];
+        const key = `${row},${col}`;
         
-        console.log(`💫 FLOATING: Added ${validFloatingBubbles.length} floating bubbles to explosion animation - NO GRID DELETION HERE`);
-        this.debugGridIntegrity('after_adding_floating_to_explosion');
+        if (!processed.has(key) && bubble) {
+          // Знаходимо всі прикріплені кулі (незалежно від кольору)
+          const attachedCluster = this.findAttachedCluster(row, col, processed);
+          
+          // Повинна бути хоча б одна куля в кластері
+          if (attachedCluster.length <= 0) {
+            continue;
+          }
+          
+          // Перевіряємо, чи кластер плаваючий
+          let isFloating = true;
+          for (const bubblePos of attachedCluster) {
+            if (bubblePos.row === 0) {
+              // Куля прикріплена до верхнього ряду - не плаваюча
+              isFloating = false;
+              break;
+            }
+          }
+          
+          if (isFloating) {
+            // Знайшли плаваючий кластер
+            foundFloatingBubbles.push(...attachedCluster);
+          }
+        }
       }
-    } else {
-      console.log(`ℹ️ FLOATING: No floating bubbles found`);
     }
+    
+    return foundFloatingBubbles;
   }
-
-  // НОВА БЕЗПЕЧНА ФУНКЦІЯ для пошуку груп БЕЗ змінення grid
-  findGroupsSafely(row, col) {
-    console.log(`🛡️ SAFE_FIND: Starting safe group search from ${row},${col}`);
+  
+  // ДОПОМІЖНА ФУНКЦІЯ для пошуку прикріплених куль (незалежно від кольору)
+  findAttachedCluster(row, col, globalProcessed) {
+    const attachedBubbles = [];
+    const toProcess = [{row, col}];
+    const localProcessed = new Set();
     
-    // Створюємо ПОВНУ КОПІЮ grid для безпечної роботи
-    const gridCopy = this.grid.map(row => 
-      row.map(cell => cell ? { ...cell } : null)
-    );
-    
-    // Перевіряємо що початкова клітинка існує
-    if (!gridCopy[row] || !gridCopy[row][col]) {
-      console.warn(`SAFE_FIND: No bubble at ${row},${col}`);
-      return [];
-    }
-    
-    const targetType = gridCopy[row][col].type;
-    console.log(`🛡️ SAFE_FIND: Target type is "${targetType}"`);
-    
-    // Недійсні типи не формують групи
-    if (!targetType || targetType === 'stone') {
-      console.log(`SAFE_FIND: Invalid type "${targetType}"`);
-      return [];
-    }
-    
-    // Використовуємо стек замість рекурсії для надійності
-    const stack = [{r: row, c: col}];
-    const visited = new Set();
-    const group = [];
-    
-    while (stack.length > 0) {
-      const {r, c} = stack.pop();
-      const key = `${r},${c}`;
+    while (toProcess.length > 0) {
+      const currentTile = toProcess.pop();
+      const {row: currentRow, col: currentCol} = currentTile;
+      const key = `${currentRow},${currentCol}`;
       
-      // Пропускаємо якщо вже відвідали
-      if (visited.has(key)) continue;
+      // Пропускаємо вже оброблені кулі
+      if (localProcessed.has(key)) continue;
       
       // Перевіряємо межі
-      if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) continue;
+      if (currentRow < 0 || currentRow >= this.rows || currentCol < 0 || currentCol >= this.cols) {
+        continue;
+      }
       
-      // Перевіряємо що клітинка існує
-      if (!gridCopy[r] || !gridCopy[r][c]) continue;
+      const currentBubble = this.grid[currentRow][currentCol];
       
-      const currentType = gridCopy[r][c].type;
+      // Пропускаємо пусті кулі
+      if (!currentBubble || currentBubble.type === null) {
+        continue;
+      }
       
-      // Перевіряємо відповідність типу
-      if (currentType !== targetType) continue;
+      // Позначаємо як оброблену
+      localProcessed.add(key);
+      globalProcessed.add(key);
       
-      // Додаємо до групи
-      visited.add(key);
-      group.push({
-        row: r,
-        col: c,
-        type: currentType,
-        progress: 0
-      });
+      // Додаємо кулю до кластера
+      attachedBubbles.push({row: currentRow, col: currentCol});
       
-      console.log(`🛡️ SAFE_FIND: Added ${r},${c} type="${currentType}" to group`);
+      // Отримуємо сусідів поточної кулі
+      const neighbors = this.getNeighbors(currentRow, currentCol);
       
-      // Додаємо сусідів до стеку
-      const isEvenRow = r % 2 === 0;
-      const neighbors = [
-        {r: r-1, c: isEvenRow ? c-1 : c},
-        {r: r-1, c: isEvenRow ? c : c+1},
-        {r: r, c: c-1},
-        {r: r, c: c+1},
-        {r: r+1, c: isEvenRow ? c-1 : c},
-        {r: r+1, c: isEvenRow ? c : c+1}
-      ];
-      
-      for (const {r: nr, c: nc} of neighbors) {
-        if (!visited.has(`${nr},${nc}`)) {
-          stack.push({r: nr, c: nc});
+      // Перевіряємо кожного сусіда
+      for (const neighbor of neighbors) {
+        const neighborKey = `${neighbor.r},${neighbor.c}`;
+        if (!localProcessed.has(neighborKey)) {
+          // Додаємо сусіда до черги обробки
+          toProcess.push({row: neighbor.r, col: neighbor.c});
         }
       }
     }
     
-    console.log(`🛡️ SAFE_FIND: Found ${group.length} bubbles of type "${targetType}":`, 
-      group.map(b => `${b.row},${b.col}`));
-    
-    return group;
+    return attachedBubbles;
+  }
+  
+  // ПРОСТА ФУНКЦІЯ для візуальних ефектів
+  createExplosionEffects(positions) {
+    // Створюємо частинки для кожної видаленої кулі
+    positions.forEach(pos => {
+      const {x, y} = this.gridToPixel(pos.row, pos.col);
+      this.createParticles(x, y, '#FFD700', 6);
+    });
   }
 
-  // СТАРА ФУНКЦІЯ (залишаємо для сумісності, але НЕ ВИКОРИСТОВУЄМО)
-  findAndRemoveGroups(row, col) {
-    console.log(`⚠️ OLD_FIND: This function is deprecated, using safe version instead`);
-    return this.findGroupsSafely(row, col);
-  }
 
-  removeFloatingBubbles() {
-    // stone падає як звичайна кулька
-    this.checkFloatingBubbles();
-  }
+
+
+
+
 
   gameOver() {
     this.isGameOver = true;
@@ -1829,27 +1558,28 @@ export class BubbleShooterGame {
 
   // Функція для опускання всіх кульок на один ряд вниз
   dropBubblesOneRow() {
-    // Зсуваємо всі ряди вниз на 1, не ущільнюючи кульки
+    // Зсуваємо всі ряди вниз на 1
     const lastRow = this.rows - 1;
     for (let row = lastRow; row > 0; row--) {
       for (let col = 0; col < this.cols; col++) {
-        const bubbleFromAbove = this.getGridSafely(row - 1, col);
+        const bubbleFromAbove = this.grid[row - 1][col];
         if (bubbleFromAbove) {
           const movedBubble = { ...bubbleFromAbove, row: row };
-          this.setGridSafely(row, col, movedBubble, 'DROP_MOVE_DOWN');
+          this.grid[row][col] = movedBubble;
+          this.updateActiveBubblesCache(row, col, movedBubble);
         } else {
-          this.setGridSafely(row, col, null, 'DROP_CLEAR_MOVED');
+          this.grid[row][col] = null;
+          this.updateActiveBubblesCache(row, col, null);
         }
       }
     }
+    
     // Очищаємо перший ряд
     for (let col = 0; col < this.cols; col++) {
-      const topBubble = this.getGridSafely(0, col);
-      if (topBubble) {
-        console.log(`📉 DROP: Clearing top row bubble at 0,${col} of type "${topBubble.type}"`);
-      }
-      this.setGridSafely(0, col, null, 'DROP_CLEAR_TOP');
+      this.grid[0][col] = null;
+      this.updateActiveBubblesCache(0, col, null);
     }
+    
     this.bubbleGenerationCounter++;
     if (this.bubbleGenerationCounter % 5 === 0) {
       this.generateSpecialPattern();
@@ -1862,7 +1592,8 @@ export class BubbleShooterGame {
           row: 0,
           col: col
         };
-        this.setGridSafely(0, col, newBubble, 'DROP_CREATE_NEW');
+        this.grid[0][col] = newBubble;
+        this.updateActiveBubblesCache(0, col, newBubble);
       }
     }
     this.updateColorDistribution();
@@ -1961,46 +1692,7 @@ export class BubbleShooterGame {
     });
   }
 
-  // Функція для перевірки цілісності сітки
-  debugGridIntegrity(context = '') {
-    console.log(`🔍 GRID_INTEGRITY ${context}:`);
-    
-    const colorCounts = {};
-    let totalBubbles = 0;
-    
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        if (this.grid[row][col]) {
-          const type = this.grid[row][col].type;
-          colorCounts[type] = (colorCounts[type] || 0) + 1;
-          totalBubbles++;
-        }
-      }
-    }
-    
-    console.log(`  Total bubbles: ${totalBubbles}`);
-    console.log(`  Color distribution:`, colorCounts);
-    console.log(`  Exploding bubbles: ${this.explodingBubbles.length}`);
-    
-    // Перевіряємо чи є шарики що вибухають але все ще в сітці
-    const mismatchedBubbles = [];
-    this.explodingBubbles.forEach(bubble => {
-      if (this.grid[bubble.row] && this.grid[bubble.row][bubble.col]) {
-        const gridType = this.grid[bubble.row][bubble.col].type;
-        if (gridType !== bubble.type) {
-          mismatchedBubbles.push({
-            pos: `${bubble.row},${bubble.col}`,
-            expected: bubble.type,
-            actual: gridType
-          });
-        }
-      }
-    });
-    
-    if (mismatchedBubbles.length > 0) {
-      console.error(`🚨 CRITICAL: Found ${mismatchedBubbles.length} mismatched exploding bubbles:`, mismatchedBubbles);
-    }
-  }
+
 
   drawFPS() {
     this.ctx.save();
