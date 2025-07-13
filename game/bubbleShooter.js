@@ -1556,48 +1556,107 @@ export class BubbleShooterGame {
     this.scoreEl.textContent = `Score: ${this.score}`;
   }
 
-  // Функція для опускання всіх кульок на один ряд вниз
+  // ПЕРЕПИСАНА ФУНКЦІЯ для безпечного опускання всіх кульок на один ряд вниз
   dropBubblesOneRow() {
-    // Зсуваємо всі ряди вниз на 1
-    const lastRow = this.rows - 1;
-    for (let row = lastRow; row > 0; row--) {
+    console.log('🔄 Starting dropBubblesOneRow - режим на час');
+    
+    // КРОК 1: Перевіряємо чи є кулі в останньому дозволеному ряду (game over)
+    const gameOverRow = this.rows - this.allowedBottomRows;
+    for (let col = 0; col < this.cols; col++) {
+      if (this.grid[gameOverRow][col]) {
+        console.log('💀 Game Over: кулі досягли дна');
+        this.gameOver();
+        return;
+      }
+    }
+    
+    // КРОК 2: Створюємо тимчасову копію grid для безпечного зсуву
+    const tempGrid = [];
+    for (let row = 0; row < this.rows; row++) {
+      tempGrid[row] = [];
       for (let col = 0; col < this.cols; col++) {
-        const bubbleFromAbove = this.grid[row - 1][col];
-        if (bubbleFromAbove) {
-          const movedBubble = { ...bubbleFromAbove, row: row };
-          this.grid[row][col] = movedBubble;
-          this.updateActiveBubblesCache(row, col, movedBubble);
-        } else {
-          this.grid[row][col] = null;
-          this.updateActiveBubblesCache(row, col, null);
+        tempGrid[row][col] = null;
+      }
+    }
+    
+    // КРОК 3: Зсуваємо всі кулі на один ряд вниз у тимчасовій сітці
+    for (let row = 0; row < this.rows - 1; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        const bubble = this.grid[row][col];
+        if (bubble) {
+          // Перевіряємо чи новий ряд в межах сітки
+          const newRow = row + 1;
+          if (newRow < this.rows) {
+            // Створюємо нову кулю з правильними координатами
+            tempGrid[newRow][col] = {
+              type: bubble.type,
+              row: newRow,
+              col: col
+            };
+          }
         }
       }
     }
     
-    // Очищаємо перший ряд
-    for (let col = 0; col < this.cols; col++) {
-      this.grid[0][col] = null;
-      this.updateActiveBubblesCache(0, col, null);
+    // КРОК 4: Безпечно копіюємо тимчасову сітку назад в основну
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        this.grid[row][col] = tempGrid[row][col];
+      }
     }
     
+    // КРОК 5: Генеруємо новий ряд у верхній частині (row 0)
     this.bubbleGenerationCounter++;
     if (this.bubbleGenerationCounter % 5 === 0) {
+      console.log('🎯 Генеруємо спеціальний патерн');
       this.generateSpecialPattern();
     } else {
+      console.log('🎲 Генеруємо звичайний ряд куль');
       for (let col = 0; col < this.cols; col++) {
-        // Використовуємо нову логіку для уникнення довгих послідовностей
+        // Вибираємо тип кулі уникаючи довгих послідовностей
         const bubbleType = this.selectBubbleTypeAvoidingSequence(0, col);
-        const newBubble = {
+        
+        this.grid[0][col] = {
           type: bubbleType,
           row: 0,
           col: col
         };
-        this.grid[0][col] = newBubble;
-        this.updateActiveBubblesCache(0, col, newBubble);
       }
     }
-    this.updateColorDistribution();
+    
+    // КРОК 6: Оновлюємо всі кеші одним разом для оптимізації
+    console.log('🔄 Оновлюємо кеші після опускання куль');
     this.rebuildActiveBubblesCache();
+    this.updateColorDistribution();
+    
+    // КРОК 6.5: Перевіряємо та видаляємо плаваючі кулі після зсуву
+    console.log('🔍 Перевіряємо плаваючі кулі після опускання');
+    const floatingBubbles = this.findFloatingBubbles();
+    if (floatingBubbles.length > 0) {
+      console.log(`🎈 Знайдено ${floatingBubbles.length} плаваючих куль, видаляємо їх`);
+      // Миттєво видаляємо плаваючі кулі
+      floatingBubbles.forEach(pos => {
+        this.grid[pos.row][pos.col] = null;
+      });
+      // Оновлюємо кеш після видалення плаваючих куль
+      this.rebuildActiveBubblesCache();
+      this.updateColorDistribution();
+      
+      // Додаємо бонусні очки за плаваючі кулі
+      this.score += floatingBubbles.length * 5;
+      this.updateScore();
+    }
+    
+    // КРОК 7: Додаткова перевірка на game over після зсуву
+    for (let col = 0; col < this.cols; col++) {
+      if (this.grid[gameOverRow][col]) {
+        console.log('💀 Game Over після зсуву: кулі досягли критичної позиції');
+        this.gameOver();
+        return;
+      }
+    }
+    
+    console.log('✅ dropBubblesOneRow завершено успішно');
   }
 
   // Нова функція для перевірки завершення гри
