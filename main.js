@@ -19,8 +19,8 @@ function saveToLeaderboard(score, gameMode = 'endless') {
   // Сортуємо за результатом (найкращі перші)
   leaderboard.sort((a, b) => b.score - a.score);
   
-  // Залишаємо тільки топ-10 результатів
-  const topResults = leaderboard.slice(0, 10);
+  // Збільшуємо до топ-50 результатів для можливості скролу
+  const topResults = leaderboard.slice(0, 50);
   
   // Зберігаємо назад в localStorage
   localStorage.setItem('bubbleLeaderboard', JSON.stringify(topResults));
@@ -187,22 +187,32 @@ function showLeaderboard() {
   if (!tableRows) {
     tableRows = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#999; font-style:italic;">No results yet</td></tr>';
   }
+  
+  // Показуємо кількість записів
+  const recordsCount = leaderboard.length;
+  const recordsInfo = recordsCount > 10 ? 
+    `<p style="color:#666; font-size:0.9rem; margin-bottom:16px;">Showing ${recordsCount} results - scroll to see more</p>` : 
+    recordsCount > 0 ? `<p style="color:#666; font-size:0.9rem; margin-bottom:16px;">${recordsCount} result${recordsCount > 1 ? 's' : ''}</p>` : '';
+  
   const content = `
     <div class="leaderboard" style="background:#ffffff; border:2px solid #43cea2; border-radius:18px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(67,206,162,0.2); padding:36px 32px; text-align:center; max-width:580px; margin:0 auto;">
       <h2 style="font-size:2rem; color:#111; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🏆 Leaderboard</h2>
-      <table style="width:100%; border-collapse:collapse; margin:24px 0; font-size:1.1rem;">
-        <thead>
-          <tr style="background:#e3f6fd; color:#2193b0;">
-            <th style="padding:12px 8px; text-align:center;">#</th>
-            <th style="padding:12px 16px; text-align:left;">Name</th>
-            <th style="padding:12px 16px; text-align:center;">Score</th>
-            <th style="padding:12px 16px; text-align:center;">Mode</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tableRows}
-        </tbody>
-      </table>
+      ${recordsInfo}
+      <div style="max-height:400px; overflow-y:auto; border:1px solid #e0e6ed; border-radius:8px; margin:16px 0;">
+        <table style="width:100%; border-collapse:collapse; font-size:1.1rem;">
+          <thead style="position:sticky; top:0; background:#e3f6fd; z-index:1;">
+            <tr style="color:#2193b0;">
+              <th style="padding:12px 8px; text-align:center; border-bottom:2px solid #43cea2;">#</th>
+              <th style="padding:12px 16px; text-align:left; border-bottom:2px solid #43cea2;">Name</th>
+              <th style="padding:12px 16px; text-align:center; border-bottom:2px solid #43cea2;">Score</th>
+              <th style="padding:12px 16px; text-align:center; border-bottom:2px solid #43cea2;">Mode</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
       <button id="clear-leaderboard" style="margin-bottom:16px; width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Clear Leaderboard</button><br>
       <button id="back-menu" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Back</button>
     </div>
