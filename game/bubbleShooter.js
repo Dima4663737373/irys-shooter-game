@@ -1294,6 +1294,7 @@ export class BubbleShooterGame {
     }
   }
 
+  // ПРОСТИЙ І НАДІЙНИЙ алгоритм знищення куль
   attachBubbleToGrid(hitRow, hitCol) {
     if (hitRow >= 0 && hitRow < this.rows && hitCol >= 0 && hitCol < this.cols) {
       if (hitRow >= this.rows - this.allowedBottomRows) {
@@ -1317,27 +1318,40 @@ export class BubbleShooterGame {
       };
       this.updateActiveBubblesCache(hitRow, hitCol, this.grid[hitRow][hitCol]);
       
-      // ПРОФЕСІЙНИЙ BFS АЛГОРИТМ з GitHub проектів
-      const connectedGroup = this.findBubbleCluster(hitRow, hitCol);
+      // ПРОСТИЙ алгоритм знищення - тільки перевіряємо навколо поставленої кулі
+      const targetType = this.shootingBubble.type;
+      const toRemove = this.findSimpleGroup(hitRow, hitCol, targetType);
       
-      if (connectedGroup.length >= 3) {
-        this.playSound('pop');
-        this.score += connectedGroup.length * 10;
-        this.updateScore();
+      if (toRemove.length >= 3) {
+        console.log(`Знищуємо групу з ${toRemove.length} куль типу ${targetType}`);
         
-        // Миттєво видаляємо групу
-        this.removeCluster(connectedGroup);
+        // Миттєво видаляємо ТІЛЬКИ знайдену групу
+        toRemove.forEach(pos => {
+          console.log(`Видаляємо кулю на позиції [${pos.row}, ${pos.col}]`);
+          this.grid[pos.row][pos.col] = null;
+        });
+        
+        // Оновлюємо кеш
+        this.rebuildActiveBubblesCache();
+        
+        // Рахуємо очки
+        this.score += toRemove.length * 10;
+        this.updateScore();
         
         // Знаходимо та видаляємо плаваючі кулі
-        const floatingBubbles = this.findFloatingClusters();
-        this.removeCluster(floatingBubbles);
+        const floating = this.findSimpleFloating();
+        if (floating.length > 0) {
+          console.log(`Знищуємо ${floating.length} плаваючих куль`);
+          floating.forEach(pos => {
+            console.log(`Видаляємо плаваючу кулю на позиції [${pos.row}, ${pos.col}]`);
+            this.grid[pos.row][pos.col] = null;
+          });
+          this.rebuildActiveBubblesCache();
+          this.score += floating.length * 5;
+          this.updateScore();
+        }
         
-        this.score += floatingBubbles.length * 5;
-        this.updateScore();
-        
-        // Створюємо візуальні ефекти
-        this.createExplosionEffects([...connectedGroup, ...floatingBubbles]);
-        
+        this.playSound('pop');
         this.consecutiveHits++;
         this.updateDifficulty();
       } else {
@@ -1350,51 +1364,122 @@ export class BubbleShooterGame {
     }
   }
 
-  // ПРОФЕСІЙНИЙ BFS АЛГОРИТМ з GeeksforGeeks та GitHub проектів
-  // Базується на класичному queue-based підході
-  findBubbleCluster(startRow, startCol) {
-    const startBubble = this.grid[startRow][startCol];
-    if (!startBubble) return [];
-    
-    const targetColor = startBubble.type;
-    const queue = [{row: startRow, col: startCol}];
+  // ПРОСТИЙ алгоритм пошуку групи - тільки сусідні кулі одного кольору
+  findSimpleGroup(startRow, startCol, targetType) {
     const visited = new Set();
-    const cluster = [];
+    const queue = [{row: startRow, col: startCol}];
+    const group = [];
     
-    // Позначаємо початкову кулю як відвідану
-    visited.add(`${startRow},${startCol}`);
-    
-    // Класичний BFS з queue
     while (queue.length > 0) {
-      const current = queue.shift(); // FIFO - First In First Out
-      const {row, col} = current;
+      const current = queue.shift();
+      const key = `${current.row},${current.col}`;
+      
+      if (visited.has(key)) continue;
+      visited.add(key);
       
       // Перевіряємо межі
-      if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) {
+      if (current.row < 0 || current.row >= this.rows || current.col < 0 || current.col >= this.cols) {
         continue;
       }
       
-      const currentBubble = this.grid[row][col];
+      const bubble = this.grid[current.row][current.col];
       
-      // Перевіряємо чи куля існує та має правильний колір
-      if (currentBubble && currentBubble.type === targetColor) {
-        cluster.push({row, col});
+      // Перевіряємо чи куля існує та має ТОЧНО такий самий тип
+      if (bubble && bubble.type === targetType) {
+        group.push({row: current.row, col: current.col});
         
-        // Отримуємо всіх сусідів
-        const neighbors = this.getBubbleNeighbors(row, col);
-        
-        // Додаємо невідвіданих сусідів до черги
+        // Додаємо ТІЛЬКИ прямих сусідів (простіше)
+        const neighbors = this.getDirectNeighbors(current.row, current.col);
         neighbors.forEach(neighbor => {
           const neighborKey = `${neighbor.row},${neighbor.col}`;
           if (!visited.has(neighborKey)) {
-            visited.add(neighborKey);
             queue.push(neighbor);
           }
         });
       }
     }
     
-    return cluster;
+    return group;
+  }
+
+  // ПРОСТИЙ алгоритм пошуку плаваючих куль
+  findSimpleFloating() {
+    const visited = new Set();
+    const floating = [];
+    
+    // Спочатку відмічаємо всі кулі, які прикріплені до верхнього ряду
+    for (let col = 0; col < this.cols; col++) {
+      if (this.grid[0][col] && !visited.has(`0,${col}`)) {
+        this.markAttachedBubbles(0, col, visited);
+      }
+    }
+    
+    // Всі неопрацьовані кулі - плаваючі
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        if (this.grid[row][col] && !visited.has(`${row},${col}`)) {
+          floating.push({row, col});
+        }
+      }
+    }
+    
+    return floating;
+  }
+
+  // Відмічає всі кулі, які прикріплені до верхнього ряду
+  markAttachedBubbles(row, col, visited) {
+    const queue = [{row, col}];
+    
+    while (queue.length > 0) {
+      const current = queue.shift();
+      const key = `${current.row},${current.col}`;
+      
+      if (visited.has(key)) continue;
+      visited.add(key);
+      
+      // Перевіряємо межі
+      if (current.row < 0 || current.row >= this.rows || current.col < 0 || current.col >= this.cols) {
+        continue;
+      }
+      
+      const bubble = this.grid[current.row][current.col];
+      
+      if (bubble) {
+        // Додаємо всіх сусідів
+        const neighbors = this.getDirectNeighbors(current.row, current.col);
+        neighbors.forEach(neighbor => {
+          const neighborKey = `${neighbor.row},${neighbor.col}`;
+          if (!visited.has(neighborKey)) {
+            queue.push(neighbor);
+          }
+        });
+      }
+    }
+  }
+
+  // ПРОСТИЙ алгоритм отримання сусідів (без складної hexagonal логіки)
+  getDirectNeighbors(row, col) {
+    const neighbors = [];
+    
+    // Прості напрямки: вверх, вниз, ліворуч, праворуч
+    const directions = [
+      {row: row - 1, col: col},     // вверх
+      {row: row + 1, col: col},     // вниз
+      {row: row, col: col - 1},     // ліворуч
+      {row: row, col: col + 1},     // праворуч
+      {row: row - 1, col: col - 1}, // вверх-ліворуч
+      {row: row - 1, col: col + 1}, // вверх-праворуч
+      {row: row + 1, col: col - 1}, // вниз-ліворуч
+      {row: row + 1, col: col + 1}  // вниз-праворуч
+    ];
+    
+    directions.forEach(dir => {
+      if (dir.row >= 0 && dir.row < this.rows && dir.col >= 0 && dir.col < this.cols) {
+        neighbors.push(dir);
+      }
+    });
+    
+    return neighbors;
   }
 
   // ПРОФЕСІЙНИЙ алгоритм для пошуку плаваючих куль
