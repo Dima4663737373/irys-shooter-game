@@ -213,7 +213,7 @@ function showLeaderboard() {
         </tbody>
       </table>
       </div>
-      <button id="clear-leaderboard" style="margin-bottom:16px; width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Clear Leaderboard</button><br>
+      <button id="admin-clear" style="margin-bottom:16px; width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#e74c3c 0%,#c0392b 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(231,76,60,0.10);">Admin Clear</button><br>
       <button id="back-menu" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Back</button>
     </div>
   `;
@@ -221,11 +221,22 @@ function showLeaderboard() {
   
   // Додаємо event listeners відразу без затримки
   document.getElementById('back-menu').onclick = showMainMenu;
-  document.getElementById('clear-leaderboard').onclick = function() {
-    if (confirm('Are you sure you want to clear the leaderboard?')) {
-      localStorage.removeItem('bubbleLeaderboard');
-      showLeaderboard();
+  document.getElementById('admin-clear').onclick = function() {
+    // Запитуємо пароль адміністратора
+    const password = prompt('Enter admin password to clear leaderboard:');
+    
+    if (password === 'IrysOwner2024') {
+      // Правильний пароль - підтверджуємо дію
+      if (confirm('Admin access confirmed. Are you sure you want to clear the entire leaderboard? This action cannot be undone.')) {
+        localStorage.removeItem('bubbleLeaderboard');
+        alert('Leaderboard cleared successfully!');
+        showLeaderboard(); // Оновлюємо відображення
+      }
+    } else if (password !== null) {
+      // Неправильний пароль (але не скасовано)
+      alert('Access denied. Invalid admin password.');
     }
+    // Якщо password === null, користувач скасував - нічого не робимо
   };
 }
 
