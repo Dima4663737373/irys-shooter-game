@@ -1,3 +1,14 @@
+// Імпортуємо методи таймера ходу
+import { 
+  startMoveTimer, 
+  updateMoveTimer, 
+  autoShoot, 
+  stopMoveTimer, 
+  createMoveTimerUI, 
+  updateMoveTimerUI, 
+  hideMoveTimerUI 
+} from './moveTimer.js';
+
 export class BubbleShooterGame {
   constructor(container) {
     this.container = container;
@@ -79,6 +90,15 @@ export class BubbleShooterGame {
     if (typeof window !== 'undefined') {
       window.debugGame = this;
     }
+    
+    // Додаємо методи таймера ходу до класу
+    this.startMoveTimer = startMoveTimer.bind(this);
+    this.updateMoveTimer = updateMoveTimer.bind(this);
+    this.autoShoot = autoShoot.bind(this);
+    this.stopMoveTimer = stopMoveTimer.bind(this);
+    this.createMoveTimerUI = createMoveTimerUI.bind(this);
+    this.updateMoveTimerUI = updateMoveTimerUI.bind(this);
+    this.hideMoveTimerUI = hideMoveTimerUI.bind(this);
   }
 
   async loadImages() {
@@ -922,6 +942,11 @@ export class BubbleShooterGame {
     };
     // Ініціалізуємо кут прицілювання прямо вгору
     this.shootingAngle = Math.PI / 2; // 90 градусів (вгору)
+    
+    // ⏱️ ЗАПУСКАЄМО ТАЙМЕР ХОДУ (тільки для endless режиму)
+    if (this.gameMode === 'endless') {
+      this.startMoveTimer();
+    }
   }
 
   aim(e) {
@@ -947,6 +972,11 @@ export class BubbleShooterGame {
     if (this.shootingBubble.moving || this.isPaused || this.isGameOver) return;
     
     this.playSound('shoot');
+    
+    // ⏹️ ЗУПИНЯЄМО ТАЙМЕР ХОДУ (гравець зробив постріл)
+    if (this.gameMode === 'endless') {
+      this.stopMoveTimer();
+    }
     
     // Оновлюємо лічильники
     this.shotsCount++;
@@ -975,18 +1005,64 @@ export class BubbleShooterGame {
       this.dropTimer = 10;
       this.updateTimer();
     }
-    // === Додаємо таймер складності для endless ===
+    // 🔥 ПОКРАЩЕНА СИСТЕМА СКЛАДНОСТІ ДЛЯ ENDLESS РЕЖИМУ
     if (this.gameMode === 'endless') {
       this.difficultyMultiplier = 1;
+      this.dropSpeed = 12; // Початкова швидкість опускання (секунди)
+      this.specialBubbleChance = 0.05; // 5% шанс спеціальних куль
+      this.difficultyLevel = 1;
+      this.gameStartTime = Date.now();
+      
+      // ⏱️ СИСТЕМА ОБМЕЖЕННЯ ЧАСУ НА ХІД
+      this.moveTimeLimit = 3.0; // Початковий ліміт часу на хід (секунди)
+      this.moveStartTime = null; // Час початку ходу
+      this.moveTimeRemaining = this.moveTimeLimit;
+      this.isMoveActive = false;
+      this.moveTimePhase = 1; // Фаза часових обмежень (1, 2, 3)
+      
+      // Очищуємо старі таймери
       if (this.difficultyInterval) clearInterval(this.difficultyInterval);
-      this.difficultyInterval = setInterval(() => {
-        this.difficultyMultiplier = Math.min(this.difficultyMultiplier * 1.5, 10);
-        // Можна показати повідомлення або анімацію про підвищення складності
-      }, 20000);
       if (this.threatRowTimer) clearInterval(this.threatRowTimer);
+      if (this.dropSpeedTimer) clearInterval(this.dropSpeedTimer);
+      if (this.specialEventTimer) clearInterval(this.specialEventTimer);
+      if (this.moveTimerInterval) clearInterval(this.moveTimerInterval);
+      
+      // 📈 ПРОГРЕСИВНЕ ПІДВИЩЕННЯ СКЛАДНОСТІ (кожні 20 секунд)
+      this.difficultyInterval = setInterval(() => {
+        this.difficultyLevel++;
+        this.difficultyMultiplier = Math.min(this.difficultyMultiplier * 1.4, 8);
+        this.dropSpeed = Math.max(this.dropSpeed * 0.9, 4); // Швидше опускання
+        this.specialBubbleChance = Math.min(this.specialBubbleChance + 0.03, 0.3); // Більше спеціальних куль
+        
+        console.log(`🔥 DIFFICULTY UP! Level ${this.difficultyLevel}: Speed=${this.dropSpeed.toFixed(1)}s, Special=${(this.specialBubbleChance*100).toFixed(0)}%`);
+        this.showDifficultyNotification();
+        
+        // Оновлюємо швидкість опускання
+        if (this.dropSpeedTimer) clearInterval(this.dropSpeedTimer);
+        this.dropSpeedTimer = setInterval(() => {
+          this.dropBubblesOneRow();
+        }, this.dropSpeed * 1000);
+        
+      }, 20000);
+      
+      // 🪨 ЗАГРОЗЛИВІ РЯДИ (частіше з часом)
       this.threatRowTimer = setInterval(() => {
-        this.generateStoneThreatRow();
-      }, 35000); // кожні 35 секунд
+        const threatChance = 0.2 + (this.difficultyLevel * 0.05);
+        if (Math.random() < threatChance) {
+          this.generateAdvancedThreatPattern();
+          console.log(`🪨 ADVANCED THREAT generated at level ${this.difficultyLevel}`);
+        }
+      }, Math.max(30000 - (this.difficultyLevel * 1500), 10000));
+      
+      // ⚡ ПОЧАТКОВЕ ОПУСКАННЯ
+      this.dropSpeedTimer = setInterval(() => {
+        this.dropBubblesOneRow();
+      }, this.dropSpeed * 1000);
+      
+      // 🎯 СПЕЦІАЛЬНІ ПОДІЇ (кожні 45 секунд)
+      this.specialEventTimer = setInterval(() => {
+        this.triggerSpecialEvent();
+      }, 45000);
     }
     this.updateScore();
     requestAnimationFrame((time) => this.loop(time));
@@ -1570,8 +1646,14 @@ export class BubbleShooterGame {
     if (this.threatRowTimer) clearInterval(this.threatRowTimer);
     
     // Зберігаємо результат в лідерборд з інформацією про режим
+    console.log(`🏆 GAME OVER: Зберігаємо результат - Score: ${this.score}, Mode: ${this.gameMode}`);
+    
     if (typeof window.saveToLeaderboard === 'function') {
+      console.log(`✅ Функція saveToLeaderboard знайдена, викликаємо...`);
       window.saveToLeaderboard(this.score, this.gameMode);
+      console.log(`✅ Результат збережено в лідерборд`);
+    } else {
+      console.error(`❌ Функція saveToLeaderboard не знайдена!`);
     }
     
     // Анімація появи меню game over
@@ -1592,9 +1674,303 @@ export class BubbleShooterGame {
   }
 
   exitGame() {
+    // Зберігаємо результат перед виходом, якщо гра була розпочата і є очки
+    if (this.score > 0 && !this.isGameOver) {
+      console.log(`🚪 EXIT GAME: Зберігаємо результат перед виходом - Score: ${this.score}, Mode: ${this.gameMode}`);
+      
+      if (typeof window.saveToLeaderboard === 'function') {
+        console.log(`✅ Зберігаємо результат при виході з гри`);
+        window.saveToLeaderboard(this.score, this.gameMode);
+      } else {
+        console.error(`❌ Функція saveToLeaderboard не знайдена при виході!`);
+      }
+    } else if (this.score === 0) {
+      console.log(`🚪 EXIT GAME: Результат не зберігається - гра не була розпочата (score = 0)`);
+    } else if (this.isGameOver) {
+      console.log(`🚪 EXIT GAME: Результат вже збережено при game over`);
+    }
+    
+    // Очищуємо всі таймери
+    if (this.difficultyInterval) clearInterval(this.difficultyInterval);
+    if (this.threatRowTimer) clearInterval(this.threatRowTimer);
+    if (this.dropSpeedTimer) clearInterval(this.dropSpeedTimer);
+    if (this.specialEventTimer) clearInterval(this.specialEventTimer);
+    
     // Встановлюємо правильний фон перед поверненням в меню
     if (typeof window.setGlobalBackground === 'function') window.setGlobalBackground();
     if (typeof window.showMainMenu === 'function') window.showMainMenu();
+  }
+
+  // 🔥 ПОКАЗ ПОВІДОМЛЕННЯ ПРО ПІДВИЩЕННЯ СКЛАДНОСТІ
+  showDifficultyNotification() {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 1.1rem;
+      box-shadow: 0 8px 24px rgba(255,107,107,0.4);
+      z-index: 1000;
+      animation: slideInRight 0.5s ease-out;
+      border: 2px solid rgba(255,255,255,0.3);
+    `;
+    notification.innerHTML = `🔥 Difficulty Level ${this.difficultyLevel}!<br><small>Speed increased!</small>`;
+    
+    document.body.appendChild(notification);
+    
+    // Видаляємо через 3 секунди
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.style.animation = 'slideOutRight 0.5s ease-in';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 500);
+      }
+    }, 3000);
+  }
+
+  // ⚡ СПЕЦІАЛЬНІ ПОДІЇ ДЛЯ ENDLESS РЕЖИМУ
+  triggerSpecialEvent() {
+    const events = ['colorFlood', 'bubbleRain', 'speedBoost', 'stoneWave'];
+    const event = events[Math.floor(Math.random() * events.length)];
+    
+    console.log(`⚡ SPECIAL EVENT: ${event} triggered at level ${this.difficultyLevel}`);
+    
+    switch (event) {
+      case 'colorFlood':
+        this.colorFloodEvent();
+        break;
+      case 'bubbleRain':
+        this.bubbleRainEvent();
+        break;
+      case 'speedBoost':
+        this.speedBoostEvent();
+        break;
+      case 'stoneWave':
+        this.stoneWaveEvent();
+        break;
+    }
+  }
+
+  // 🌊 ПОДІЯ: Заповнення одним кольором
+  colorFloodEvent() {
+    const floodColor = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
+    let bubblesAdded = 0;
+    
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        if (!this.grid[row][col] && Math.random() < 0.6) {
+          this.grid[row][col] = {
+            type: floodColor,
+            row: row,
+            col: col
+          };
+          bubblesAdded++;
+        }
+      }
+    }
+    
+    this.showEventNotification(`🌊 Color Flood!`, `${bubblesAdded} ${floodColor} bubbles added`);
+    this.rebuildActiveBubblesCache();
+  }
+
+  // 🌧️ ПОДІЯ: Дощ з кульок
+  bubbleRainEvent() {
+    let bubblesAdded = 0;
+    
+    for (let col = 0; col < this.cols; col++) {
+      if (Math.random() < 0.7) {
+        // Знаходимо найвищу вільну позицію в колонці
+        for (let row = 0; row < this.rows; row++) {
+          if (!this.grid[row][col]) {
+            this.grid[row][col] = {
+              type: this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)],
+              row: row,
+              col: col
+            };
+            bubblesAdded++;
+            break;
+          }
+        }
+      }
+    }
+    
+    this.showEventNotification(`🌧️ Bubble Rain!`, `${bubblesAdded} random bubbles dropped`);
+    this.rebuildActiveBubblesCache();
+  }
+
+  // ⚡ ПОДІЯ: Прискорення
+  speedBoostEvent() {
+    const originalSpeed = this.dropSpeed;
+    this.dropSpeed = Math.max(this.dropSpeed * 0.5, 2); // Подвоюємо швидкість
+    
+    this.showEventNotification(`⚡ Speed Boost!`, `Drop speed doubled for 15 seconds`);
+    
+    // Оновлюємо таймер
+    if (this.dropSpeedTimer) clearInterval(this.dropSpeedTimer);
+    this.dropSpeedTimer = setInterval(() => {
+      this.dropBubblesOneRow();
+    }, this.dropSpeed * 1000);
+    
+    // Повертаємо нормальну швидкість через 15 секунд
+    setTimeout(() => {
+      this.dropSpeed = originalSpeed;
+      if (this.dropSpeedTimer) clearInterval(this.dropSpeedTimer);
+      this.dropSpeedTimer = setInterval(() => {
+        this.dropBubblesOneRow();
+      }, this.dropSpeed * 1000);
+    }, 15000);
+  }
+
+  // 🪨 ПОДІЯ: Хвиля каменів
+  stoneWaveEvent() {
+    const stoneCount = Math.min(3 + this.difficultyLevel, 8);
+    let stonesAdded = 0;
+    
+    for (let i = 0; i < stoneCount; i++) {
+      const row = Math.floor(Math.random() * 3);
+      const col = Math.floor(Math.random() * this.cols);
+      
+      if (!this.grid[row][col]) {
+        this.grid[row][col] = {
+          type: 'stone',
+          row: row,
+          col: col
+        };
+        stonesAdded++;
+      }
+    }
+    
+    this.showEventNotification(`🪨 Stone Wave!`, `${stonesAdded} stone bubbles appeared`);
+    this.rebuildActiveBubblesCache();
+  }
+
+  // 🚨 ПОКРАЩЕНІ ЗАГРОЗЛИВІ ПАТЕРНИ
+  generateAdvancedThreatPattern() {
+    const patterns = ['stoneBarrier', 'colorTrap', 'narrowPath'];
+    const pattern = patterns[Math.floor(Math.random() * patterns.length)];
+    
+    switch (pattern) {
+      case 'stoneBarrier':
+        this.generateStoneBarrier();
+        break;
+      case 'colorTrap':
+        this.generateColorTrap();
+        break;
+      case 'narrowPath':
+        this.generateNarrowPath();
+        break;
+    }
+  }
+
+  generateStoneBarrier() {
+    // Створюємо бар'єр з каменів
+    const barrierRow = Math.floor(Math.random() * 3);
+    const startCol = Math.floor(Math.random() * (this.cols - 4));
+    
+    for (let i = 0; i < 4; i++) {
+      if (!this.grid[barrierRow][startCol + i]) {
+        this.grid[barrierRow][startCol + i] = {
+          type: 'stone',
+          row: barrierRow,
+          col: startCol + i
+        };
+      }
+    }
+    
+    this.showEventNotification(`🚧 Stone Barrier!`, `Obstacle created`);
+    this.rebuildActiveBubblesCache();
+  }
+
+  generateColorTrap() {
+    // Створюємо пастку з одного кольору
+    const trapColor = this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)];
+    const centerRow = Math.floor(Math.random() * 2);
+    const centerCol = Math.floor(Math.random() * (this.cols - 2)) + 1;
+    
+    // Створюємо хрест з одного кольору
+    const positions = [
+      {row: centerRow, col: centerCol},
+      {row: centerRow, col: centerCol - 1},
+      {row: centerRow, col: centerCol + 1},
+      {row: centerRow + 1, col: centerCol}
+    ];
+    
+    positions.forEach(pos => {
+      if (pos.row < this.rows && pos.col >= 0 && pos.col < this.cols && !this.grid[pos.row][pos.col]) {
+        this.grid[pos.row][pos.col] = {
+          type: trapColor,
+          row: pos.row,
+          col: pos.col
+        };
+      }
+    });
+    
+    this.showEventNotification(`🎯 Color Trap!`, `${trapColor} cluster formed`);
+    this.rebuildActiveBubblesCache();
+  }
+
+  generateNarrowPath() {
+    // Створюємо вузький прохід
+    const pathCol = Math.floor(this.cols / 2);
+    
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        if (Math.abs(col - pathCol) > 1 && !this.grid[row][col] && Math.random() < 0.8) {
+          this.grid[row][col] = {
+            type: this.bubbleTypes[Math.floor(Math.random() * this.bubbleTypes.length)],
+            row: row,
+            col: col
+          };
+        }
+      }
+    }
+    
+    this.showEventNotification(`🚪 Narrow Path!`, `Only center path remains`);
+    this.rebuildActiveBubblesCache();
+  }
+
+  // 📢 ПОКАЗ ПОВІДОМЛЕНЬ ПРО ПОДІЇ
+  showEventNotification(title, description) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 1rem;
+      box-shadow: 0 8px 24px rgba(102,126,234,0.4);
+      z-index: 1000;
+      animation: slideInRight 0.5s ease-out;
+      border: 2px solid rgba(255,255,255,0.3);
+      max-width: 250px;
+    `;
+    notification.innerHTML = `${title}<br><small style="opacity:0.9;">${description}</small>`;
+    
+    document.body.appendChild(notification);
+    
+    // Видаляємо через 4 секунди
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.style.animation = 'slideOutRight 0.5s ease-in';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 500);
+      }
+    }, 4000);
   }
 
   updateScore() {

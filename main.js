@@ -4,8 +4,13 @@ const app = document.getElementById('app');
 
 // Глобальна функція для збереження результатів в лідерборд
 function saveToLeaderboard(score, gameMode = 'endless') {
+  console.log(`🏆 saveToLeaderboard ВИКЛИКАНА: score=${score}, gameMode=${gameMode}`);
+  
   const playerName = localStorage.getItem('playerName') || 'Anonymous';
+  console.log(`👤 Ім'я гравця: ${playerName}`);
+  
   const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
+  console.log(`📊 Поточний лідерборд має ${leaderboard.length} записів`);
   
   // Додаємо новий результат
   const newResult = {
@@ -14,6 +19,8 @@ function saveToLeaderboard(score, gameMode = 'endless') {
     mode: gameMode || 'endless', // Забезпечуємо що режим завжди визначений
     date: new Date().toISOString()
   };
+  console.log(`➕ Додаємо новий результат:`, newResult);
+  
   leaderboard.push(newResult);
   
   // Сортуємо за результатом (найкращі перші)
@@ -24,6 +31,8 @@ function saveToLeaderboard(score, gameMode = 'endless') {
   
   // Зберігаємо назад в localStorage
   localStorage.setItem('bubbleLeaderboard', JSON.stringify(topResults));
+  console.log(`💾 Результат збережено! Тепер в лідерборді ${topResults.length} записів`);
+  console.log(`📋 Топ-3 результати:`, topResults.slice(0, 3));
 }
 
 // Експортуємо функції для використання в грі
@@ -176,14 +185,68 @@ function showLeaderboard() {
   setGlobalBackground();
   
   const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
-  let tableRows = leaderboard.map((entry, idx) => `
-    <tr style="border-bottom:1px solid #e0e6ed;">
-      <td style="padding:12px 8px; text-align:center; font-weight:bold; color:#2193b0;">${idx + 1}</td>
-      <td style="padding:12px 16px; text-align:left; color:#333;">${entry.name}</td>
-      <td style="padding:12px 16px; text-align:center; font-weight:bold; color:#43cea2;">${entry.score}</td>
-      <td style="padding:12px 16px; text-align:center; color:#666;">${entry.mode === 'timed' ? '1min' : 'Endless'}</td>
-    </tr>
-  `).join('');
+  const currentPlayerName = localStorage.getItem('playerName') || 'Anonymous';
+  
+  // Знаходимо найкращий результат поточного гравця
+  const playerResults = leaderboard.filter(entry => entry.name === currentPlayerName);
+  const bestPlayerResult = playerResults.length > 0 ? 
+    playerResults.reduce((best, current) => current.score > best.score ? current : best) : null;
+  
+  // Знаходимо позицію найкращого результату гравця в загальному рейтингу
+  let playerPosition = null;
+  if (bestPlayerResult) {
+    playerPosition = leaderboard.findIndex(entry => 
+      entry.name === bestPlayerResult.name && 
+      entry.score === bestPlayerResult.score && 
+      entry.mode === bestPlayerResult.mode
+    ) + 1;
+  }
+  
+  // Створюємо блок з найкращим результатом гравця
+  let playerBestSection = '';
+  if (bestPlayerResult) {
+    playerBestSection = `
+      <div style="background:linear-gradient(135deg, #43cea2 0%, #185a9d 100%); border-radius:12px; padding:16px; margin:16px 0; box-shadow:0 8px 24px rgba(67,206,162,0.3); border:2px solid rgba(255,255,255,0.2);">
+        <h3 style="color:#fff; margin:0 0 12px 0; font-size:1.2rem; text-shadow:0 2px 4px rgba(0,0,0,0.3);">🌟 Your Best Result</h3>
+        <div style="background:rgba(255,255,255,0.15); border-radius:8px; padding:12px; backdrop-filter:blur(10px);">
+          <div style="display:flex; justify-content:space-between; align-items:center; color:#fff; font-weight:bold;">
+            <span style="font-size:1.1rem;">Rank #${playerPosition}</span>
+            <span style="font-size:1.3rem; color:#FFD700; text-shadow:0 2px 4px rgba(0,0,0,0.5);">${bestPlayerResult.score} pts</span>
+            <span style="font-size:1rem; opacity:0.9;">${bestPlayerResult.mode === 'timed' ? '1min' : 'Endless'}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    playerBestSection = `
+      <div style="background:linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%); border-radius:12px; padding:16px; margin:16px 0; box-shadow:0 8px 24px rgba(149,165,166,0.3); border:2px solid rgba(255,255,255,0.2);">
+        <h3 style="color:#fff; margin:0 0 8px 0; font-size:1.2rem; text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎮 Your Results</h3>
+        <p style="color:rgba(255,255,255,0.9); margin:0; font-size:1rem;">No games played yet. Start playing to see your best score!</p>
+      </div>
+    `;
+  }
+  
+  // Створюємо рядки таблиці з виділенням результатів поточного гравця
+  let tableRows = leaderboard.map((entry, idx) => {
+    const isCurrentPlayer = entry.name === currentPlayerName;
+    const rowStyle = isCurrentPlayer ? 
+      'border-bottom:1px solid #e0e6ed; background:linear-gradient(90deg, rgba(67,206,162,0.1) 0%, rgba(24,90,157,0.1) 100%); border-left:4px solid #43cea2;' : 
+      'border-bottom:1px solid #e0e6ed;';
+    
+    const nameStyle = isCurrentPlayer ? 
+      'padding:12px 16px; text-align:left; color:#185a9d; font-weight:bold;' : 
+      'padding:12px 16px; text-align:left; color:#333;';
+    
+    return `
+      <tr style="${rowStyle}">
+        <td style="padding:12px 8px; text-align:center; font-weight:bold; color:#2193b0;">${idx + 1}</td>
+        <td style="${nameStyle}">${entry.name}${isCurrentPlayer ? ' 👤' : ''}</td>
+        <td style="padding:12px 16px; text-align:center; font-weight:bold; color:#43cea2;">${entry.score}</td>
+        <td style="padding:12px 16px; text-align:center; color:#666;">${entry.mode === 'timed' ? '1min' : 'Endless'}</td>
+      </tr>
+    `;
+  }).join('');
+  
   if (!tableRows) {
     tableRows = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#999; font-style:italic;">No results yet</td></tr>';
   }
@@ -197,6 +260,9 @@ function showLeaderboard() {
   const content = `
     <div class="leaderboard" style="background:#ffffff; border:2px solid #43cea2; border-radius:18px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(67,206,162,0.2); padding:36px 32px; text-align:center; max-width:580px; margin:0 auto;">
       <h2 style="font-size:2rem; color:#111; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🏆 Leaderboard</h2>
+      
+      ${playerBestSection}
+      
       ${recordsInfo}
       <div style="max-height:400px; overflow-y:auto; border:1px solid #e0e6ed; border-radius:8px; margin:16px 0;">
         <table style="width:100%; border-collapse:collapse; font-size:1.1rem;">
