@@ -943,10 +943,7 @@ export class BubbleShooterGame {
     // Ініціалізуємо кут прицілювання прямо вгору
     this.shootingAngle = Math.PI / 2; // 90 градусів (вгору)
     
-    // ⏱️ ЗАПУСКАЄМО ТАЙМЕР ХОДУ (тільки для endless режиму)
-    if (this.gameMode === 'endless') {
-      this.startMoveTimer();
-    }
+    // ⏱️ ТАЙМЕР ХОДУ буде запущений після початку гри, не тут
   }
 
   aim(e) {
@@ -1063,6 +1060,9 @@ export class BubbleShooterGame {
       this.specialEventTimer = setInterval(() => {
         this.triggerSpecialEvent();
       }, 45000);
+      
+      // ⏱️ ЗАПУСКАЄМО ТАЙМЕР ХОДУ (тільки для endless режиму)
+      this.startMoveTimer();
     }
     this.updateScore();
     requestAnimationFrame((time) => this.loop(time));
