@@ -148,6 +148,13 @@ function showMainMenu() {
 function showGame() {
   console.log('showGame: Starting game initialization');
 
+  // Перевіряємо, чи підключений гаманець
+  if (!connectedWallet || !walletAddress) {
+    alert('Please connect your wallet first to play!');
+    showMainMenu();
+    return;
+  }
+
   // Зберігаємо фон під час гри
   setGlobalBackground();
 
@@ -170,6 +177,26 @@ function showGame() {
 
     const game = new BubbleShooterGame(gameContainer);
     console.log('showGame: Game instance created:', game);
+
+    // Модифікуємо showModeSelection для інтеграції з Irys
+    const originalShowModeSelection = game.showModeSelection.bind(game);
+    game.showModeSelection = function() {
+      originalShowModeSelection();
+      
+      // Додаємо обробники для кнопок режимів з Irys транзакціями
+      setTimeout(() => {
+        const endlessBtn = document.getElementById('endless-mode');
+        const timedBtn = document.getElementById('timed-mode');
+        
+        if (endlessBtn) {
+          endlessBtn.onclick = () => startGameWithTransaction('endless', game);
+        }
+        
+        if (timedBtn) {
+          timedBtn.onclick = () => startGameWithTransaction('timed', game);
+        }
+      }, 100);
+    };
 
     // Запускаємо вибір режиму гри
     game.showModeSelection();
@@ -519,5 +546,197 @@ document.addEventListener('DOMContentLoaded', function () {
   app.style.opacity = '1';
 });
 
+// Функція для запуску гри з Irys транзакцією
+async function startGameWithTransaction(gameMode, gameInstance) {
+  try {
+    console.log(`🚀 Starting ${gameMode} mode with Irys transaction...`);
+    
+    // Показуємо модальне вікно підтвердження транзакції
+    showTransactionModal(gameMode, async () => {
+      try {
+        // Ініціалізуємо Irys інтеграцію
+        if (typeof window.IrysIntegration !== 'undefined') {
+          const result = await window.IrysIntegration.startGameWithIrys(
+            gameMode, 
+            window.ethereum, 
+            walletAddress
+          );
+          
+          if (result.success) {
+            console.log('✅ Transaction successful, starting game...');
+            hideTransactionModal();
+            
+            // Запускаємо гру з обраним режимом
+            gameInstance.gameMode = gameMode;
+            gameInstance.init();
+          } else {
+            throw new Error(result.error || 'Transaction failed');
+          }
+        } else {
+          console.warn('⚠️ Irys integration not available, starting game without transaction');
+          hideTransactionModal();
+          gameInstance.gameMode = gameMode;
+          gameInstance.init();
+        }
+      } catch (error) {
+        console.error('❌ Transaction failed:', error);
+        hideTransactionModal();
+        alert(`Transaction failed: ${error.message}`);
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to start game with transaction:', error);
+    alert(`Failed to start game: ${error.message}`);
+  }
+}
+
+// Функція для показу модального вікна транзакції
+function showTransactionModal(gameMode, onConfirm) {
+  const modal = document.createElement('div');
+  modal.id = 'transaction-modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease-out;
+  `;
+  
+  modal.innerHTML = `
+    <div style="
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideInUp 0.4s ease-out;
+    ">
+      <h2 style="color: #2193b0; margin-bottom: 20px; font-size: 1.8rem;">🎮 Start ${gameMode.charAt(0).toUpperCase() + gameMode.slice(1)} Mode</h2>
+      
+      <div style="background: linear-gradient(135deg, #43cea2, #185a9d); color: white; padding: 20px; border-radius: 12px; margin: 20px 0;">
+        <p style="margin: 0 0 10px 0; font-size: 1.1rem;">🔗 Connected Wallet:</p>
+        <p style="margin: 0; font-size: 0.9rem; opacity: 0.9; word-break: break-all;">${walletAddress}</p>
+      </div>
+      
+      <p style="color: #666; margin: 20px 0; font-size: 1rem;">
+        To start the game, you need to sign a transaction on the Irys testnet. 
+        This will create a game session record on the decentralized network.
+      </p>
+      
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0; font-size: 0.9rem; color: #666;">
+          📝 <strong>Game Mode:</strong> ${gameMode}<br>
+          🌐 <strong>Network:</strong> Irys Testnet<br>
+          💰 <strong>Cost:</strong> Free (Testnet)
+        </p>
+      </div>
+      
+      <div id="transaction-status" style="margin: 20px 0; padding: 10px; border-radius: 8px; font-size: 0.9rem;"></div>
+      
+      <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+        <button id="confirm-transaction" style="
+          padding: 12px 30px;
+          background: linear-gradient(135deg, #43cea2, #185a9d);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-size: 1.1rem;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        ">🚀 Sign & Start Game</button>
+        
+        <button id="cancel-transaction" style="
+          padding: 12px 30px;
+          background: #e74c3c;
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-size: 1.1rem;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        ">❌ Cancel</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Додаємо обробники подій
+  document.getElementById('confirm-transaction').onclick = () => {
+    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+    document.getElementById('confirm-transaction').disabled = true;
+    document.getElementById('confirm-transaction').style.opacity = '0.6';
+    onConfirm();
+  };
+  
+  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+  
+  // Закриття по кліку на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      hideTransactionModal();
+    }
+  };
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
 // Запуск з головного меню
-showMainMenu(); 
+showMainMenu(); pendChild
+(modal);
+  
+  // Додаємо обробники подій
+  document.getElementById('confirm-transaction').onclick = () => {
+    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+    document.getElementById('confirm-transaction').disabled = true;
+    document.getElementById('confirm-transaction').style.opacity = '0.6';
+    onConfirm();
+  };
+  
+  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+  
+  // Закриття по кліку на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      hideTransactionModal();
+    }
+  };
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
+// Запуск з головного меню
+showMainMenu();
