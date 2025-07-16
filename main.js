@@ -180,18 +180,18 @@ function showGame() {
 
     // Модифікуємо showModeSelection для інтеграції з Irys
     const originalShowModeSelection = game.showModeSelection.bind(game);
-    game.showModeSelection = function() {
+    game.showModeSelection = function () {
       originalShowModeSelection();
-      
+
       // Додаємо обробники для кнопок режимів з Irys транзакціями
       setTimeout(() => {
         const endlessBtn = document.getElementById('endless-mode');
         const timedBtn = document.getElementById('timed-mode');
-        
+
         if (endlessBtn) {
           endlessBtn.onclick = () => startGameWithTransaction('endless', game);
         }
-        
+
         if (timedBtn) {
           timedBtn.onclick = () => startGameWithTransaction('timed', game);
         }
@@ -550,22 +550,24 @@ document.addEventListener('DOMContentLoaded', function () {
 async function startGameWithTransaction(gameMode, gameInstance) {
   try {
     console.log(`🚀 Starting ${gameMode} mode with Irys transaction...`);
-    
+    console.log('Connected wallet:', connectedWallet);
+    console.log('Wallet address:', walletAddress);
+
     // Показуємо модальне вікно підтвердження транзакції
     showTransactionModal(gameMode, async () => {
       try {
         // Ініціалізуємо Irys інтеграцію
         if (typeof window.IrysIntegration !== 'undefined') {
           const result = await window.IrysIntegration.startGameWithIrys(
-            gameMode, 
-            window.ethereum, 
+            gameMode,
+            window.ethereum,
             walletAddress
           );
-          
+
           if (result.success) {
             console.log('✅ Transaction successful, starting game...');
             hideTransactionModal();
-            
+
             // Запускаємо гру з обраним режимом
             gameInstance.gameMode = gameMode;
             gameInstance.init();
@@ -584,7 +586,7 @@ async function startGameWithTransaction(gameMode, gameInstance) {
         alert(`Transaction failed: ${error.message}`);
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Failed to start game with transaction:', error);
     alert(`Failed to start game: ${error.message}`);
@@ -608,7 +610,7 @@ function showTransactionModal(gameMode, onConfirm) {
     z-index: 10000;
     animation: fadeIn 0.3s ease-out;
   `;
-  
+
   modal.innerHTML = `
     <div style="
       background: white;
@@ -669,9 +671,9 @@ function showTransactionModal(gameMode, onConfirm) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
-  
+
   // Додаємо обробники подій
   document.getElementById('confirm-transaction').onclick = () => {
     document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
@@ -679,9 +681,321 @@ function showTransactionModal(gameMode, onConfirm) {
     document.getElementById('confirm-transaction').style.opacity = '0.6';
     onConfirm();
   };
-  
+
   document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-  
+
+  // Закриття по кліку на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      hideTransactionModal();
+    }
+  };
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
+// Запуск з головного меню
+showMainMenu();
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Додаємо обробники подій
+  document.getElementById('confirm-transaction').onclick = () => {
+    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+    document.getElementById('confirm-transaction').disabled = true;
+    document.getElementById('confirm-transaction').style.opacity = '0.6';
+    onConfirm();
+  };
+
+  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+
+  // Закриття по кліку на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      hideTransactionModal();
+    }
+  };
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
+// Запуск з головного меню
+showMainMenu();
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Додаємо обробники подій
+  document.getElementById('confirm-transaction').onclick = () => {
+    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+    document.getElementById('confirm-transaction').disabled = true;
+    document.getElementById('confirm-transaction').style.opacity = '0.6';
+    onConfirm();
+  };
+
+  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+
+  // Закриття по кліку на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      hideTransactionModal();
+    }
+  };
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
+// Запуск з головного меню
+showMainMenu();
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Додаємо обробники подій
+  document.getElementById('confirm-transaction').onclick = () => {
+    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+    document.getElementById('confirm-transaction').disabled = true;
+    document.getElementById('confirm-transaction').style.opacity = '0.6';
+    onConfirm();
+  };
+
+  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+
+  // Закриття по кліку на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      hideTransactionModal();
+    }
+  };
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
+// Запуск з головного меню
+showMainMenu();
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Додаємо обробники подій
+  document.getElementById('confirm-transaction').onclick = () => {
+    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+    document.getElementById('confirm-transaction').disabled = true;
+    document.getElementById('confirm-transaction').style.opacity = '0.6';
+    onConfirm();
+  };
+
+  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+
+  // Закриття по кліку на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      hideTransactionModal();
+    }
+  };
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
+// Запуск з головного меню
+showMainMenu();
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Додаємо обробники подій
+  document.getElementById('confirm-transaction').onclick = () => {
+    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+    document.getElementById('confirm-transaction').disabled = true;
+    document.getElementById('confirm-transaction').style.opacity = '0.6';
+    onConfirm();
+  };
+
+  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+
+  // Закриття по кліку на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      hideTransactionModal();
+    }
+  };
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
+// Запуск з головного меню
+showMainMenu();
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Додаємо обробники подій
+  document.getElementById('confirm-transaction').onclick = () => {
+    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+    document.getElementById('confirm-transaction').disabled = true;
+    document.getElementById('confirm-transaction').style.opacity = '0.6';
+    onConfirm();
+  };
+
+  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+
+  // Закриття по кліку на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      hideTransactionModal();
+    }
+  };
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
+// Запуск з головного меню
+showMainMenu();
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Додаємо обробники подій
+  document.getElementById('confirm-transaction').onclick = () => {
+    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+    document.getElementById('confirm-transaction').disabled = true;
+    document.getElementById('confirm-transaction').style.opacity = '0.6';
+    onConfirm();
+  };
+
+  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+
+  // Закриття по кліку на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      hideTransactionModal();
+    }
+  };
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
+// Запуск з головного меню
+showMainMenu();
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Додаємо обробники подій
+  document.getElementById('confirm-transaction').onclick = () => {
+    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+    document.getElementById('confirm-transaction').disabled = true;
+    document.getElementById('confirm-transaction').style.opacity = '0.6';
+    onConfirm();
+  };
+
+  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+
   // Закриття по кліку на фон
   modal.onclick = (e) => {
     if (e.target === modal) {
@@ -705,8 +1019,47 @@ function hideTransactionModal() {
 
 // Запуск з головного меню
 showMainMenu(); pendChild
-(modal);
-  
+  (modal);
+
+// Додаємо обробники подій
+document.getElementById('confirm-transaction').onclick = () => {
+  document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
+  document.getElementById('confirm-transaction').disabled = true;
+  document.getElementById('confirm-transaction').style.opacity = '0.6';
+  onConfirm();
+};
+
+document.getElementById('cancel-transaction').onclick = hideTransactionModal;
+
+// Закриття по кліку на фон
+modal.onclick = (e) => {
+  if (e.target === modal) {
+    hideTransactionModal();
+  }
+};
+}
+
+// Функція для приховування модального вікна транзакції
+function hideTransactionModal() {
+  const modal = document.getElementById('transaction-modal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.3s ease-in';
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+}
+
+// Запуск з головного меню
+showMainMenu(); 
+     </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
   // Додаємо обробники подій
   document.getElementById('confirm-transaction').onclick = () => {
     document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
@@ -714,9 +1067,9 @@ showMainMenu(); pendChild
     document.getElementById('confirm-transaction').style.opacity = '0.6';
     onConfirm();
   };
-  
+
   document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-  
+
   // Закриття по кліку на фон
   modal.onclick = (e) => {
     if (e.target === modal) {
