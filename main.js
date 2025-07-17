@@ -1,55 +1,82 @@
-import { BubbleShooterGame } from './game/bubbleShooter.js';
+console.log('🚀 Main.js loaded successfully');
+
+// Wait for DOM to be ready
+if (document.readyState === 'loading') {
+  console.log('📄 DOM is still loading...');
+} else {
+  console.log('📄 DOM is already ready');
+}
 
 const app = document.getElementById('app');
+console.log('📱 App element found:', app);
 
-// Глобальна функція для збереження результатів в лідерборд
+if (!app) {
+  console.error('❌ App element not found!');
+} else {
+  console.log('✅ App element is ready');
+}
+
+// Import game module only when needed
+let BubbleShooterGame = null;
+
+async function loadGameModule() {
+  if (!BubbleShooterGame) {
+    try {
+      const module = await import('./game/bubbleShooter.js');
+      BubbleShooterGame = module.BubbleShooterGame;
+      console.log('✅ Game module loaded successfully');
+    } catch (error) {
+      console.error('❌ Failed to load game module:', error);
+    }
+  }
+  return BubbleShooterGame;
+}
+
+// Global function to save results to leaderboard
 function saveToLeaderboard(score, gameMode = 'endless') {
-  console.log(`🏆 saveToLeaderboard ВИКЛИКАНА: score=${score}, gameMode=${gameMode}`);
+  console.log(`🏆 saveToLeaderboard called: score=${score}, gameMode=${gameMode}`);
 
   const playerName = localStorage.getItem('playerName') || 'Anonymous';
-  console.log(`👤 Ім'я гравця: ${playerName}`);
+  console.log(`👤 Player name: ${playerName}`);
 
   const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
-  console.log(`📊 Поточний лідерборд має ${leaderboard.length} записів`);
+  console.log(`📊 Current leaderboard has ${leaderboard.length} entries`);
 
-  // Додаємо новий результат
+  // Add new result
   const newResult = {
     name: playerName,
     score: score,
-    mode: gameMode || 'endless', // Забезпечуємо що режим завжди визначений
+    mode: gameMode || 'endless',
     date: new Date().toISOString()
   };
-  console.log(`➕ Додаємо новий результат:`, newResult);
+  console.log(`➕ Adding new result:`, newResult);
 
   leaderboard.push(newResult);
 
-  // Сортуємо за результатом (найкращі перші)
+  // Sort by score (best first)
   leaderboard.sort((a, b) => b.score - a.score);
 
-  // Збільшуємо до топ-50 результатів для можливості скролу
+  // Keep top 50 results
   const topResults = leaderboard.slice(0, 50);
 
-  // Зберігаємо назад в localStorage
+  // Save back to localStorage
   localStorage.setItem('bubbleLeaderboard', JSON.stringify(topResults));
-  console.log(`💾 Результат збережено! Тепер в лідерборді ${topResults.length} записів`);
-  console.log(`📋 Топ-3 результати:`, topResults.slice(0, 3));
+  console.log(`💾 Result saved! Now leaderboard has ${topResults.length} entries`);
+  console.log(`📋 Top 3 results:`, topResults.slice(0, 3));
 }
 
-// Експортуємо функції для використання в грі
-window.saveToLeaderboard = saveToLeaderboard;
-window.setGlobalBackground = setGlobalBackground;
-
-// Функція для встановлення фону (спрощена)
+// Function to set background
 function setGlobalBackground() {
-  // Просто переконуємося що CSS працює правильно
   document.body.style.background = "url('/menu-bg.jpg') center center / cover no-repeat fixed";
 }
 
-// Функція для швидких переходів без затримок
+// Export functions for use in game
+window.saveToLeaderboard = saveToLeaderboard;
+window.setGlobalBackground = setGlobalBackground;
+
+// Function for smooth transitions
 function smoothTransition(newContent) {
   const app = document.getElementById('app');
-
-  // Миттєва заміна контенту без будь-яких ефектів
   app.style.transition = 'none';
   app.style.opacity = '1';
   app.innerHTML = newContent;
@@ -80,7 +107,7 @@ function showMainMenu() {
         font-weight: bold;
         letter-spacing: 1px;
         text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      ">🎯 Irys Shooter</h1>
+      ">Irys Shooter</h1>
       
       <div class="buttons-container" style="
         background: rgba(255,255,255,0.1);
@@ -96,7 +123,7 @@ function showMainMenu() {
         animation: slideInUp 0.8s ease-out 0.2s both;
         transition: all 0.3s ease-in-out;
         cursor: default;
-      " onmouseover="this.style.borderColor='rgba(255,255,255,1)'; this.style.boxShadow='0 25px 70px rgba(0,0,0,0.5), 0 15px 40px rgba(255,255,255,0.2), inset 0 2px 0 rgba(255,255,255,0.7)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.8)'; this.style.boxShadow='0 20px 60px rgba(0,0,0,0.4), 0 10px 30px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.5)'; this.style.transform='translateY(0)'">
+      ">
       <button id="play-btn" style="animation: slideInLeft 0.6s ease-out 0.3s both;">🎮 Play</button>
       <button id="connect-wallet-btn" style="animation: slideInUp 0.6s ease-out 0.4s both;">🔗 Connect Wallet</button>
       <button id="leaderboard-btn" style="animation: slideInUp 0.6s ease-out 0.5s both;">🏆 Leaderboard</button>
@@ -107,13 +134,11 @@ function showMainMenu() {
 
   smoothTransition(content);
 
-  // Додаємо event listeners відразу без затримки
-  // Додаємо звукові ефекти для кнопок
+  // Add event listeners
   const buttons = document.querySelectorAll('.main-menu button');
   buttons.forEach(button => {
     button.addEventListener('mouseenter', () => {
       console.log('Menu button hovered - playing sound');
-      // Простий звук hover
       if (window.AudioContext || window.webkitAudioContext) {
         try {
           const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -124,7 +149,7 @@ function showMainMenu() {
           gainNode.connect(audioContext.destination);
 
           oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
-          gainNode.gain.setValueAtTime(0.15, audioContext.currentTime); // Збільшуємо гучність
+          gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
 
           oscillator.start(audioContext.currentTime);
@@ -133,8 +158,6 @@ function showMainMenu() {
         } catch (e) {
           console.warn('Error playing menu sound:', e);
         }
-      } else {
-        console.warn('AudioContext not supported');
       }
     });
   });
@@ -143,21 +166,18 @@ function showMainMenu() {
   document.getElementById('connect-wallet-btn').onclick = () => showWalletConnection();
   document.getElementById('leaderboard-btn').onclick = () => showLeaderboard();
   document.getElementById('settings-btn').onclick = () => showSettings();
-  
-
 }
 
-function showGame() {
+async function showGame() {
   console.log('showGame: Starting game initialization');
 
-  // Перевіряємо, чи підключений гаманець
+  // Check if wallet is connected
   if (!connectedWallet || !walletAddress) {
     alert('Please connect your wallet first to play!');
     showMainMenu();
     return;
   }
 
-  // Зберігаємо фон під час гри
   setGlobalBackground();
 
   const content = `
@@ -172,20 +192,25 @@ function showGame() {
 
   window.showMainMenu = showMainMenu;
 
-  // Ініціалізуємо гру відразу без затримки
   try {
+    // Load game module
+    const GameClass = await loadGameModule();
+    if (!GameClass) {
+      throw new Error('Failed to load game module');
+    }
+
     const gameContainer = document.querySelector('.game-container');
     console.log('showGame: Game container found:', gameContainer);
 
-    const game = new BubbleShooterGame(gameContainer);
+    const game = new GameClass(gameContainer);
     console.log('showGame: Game instance created:', game);
 
-    // Модифікуємо showModeSelection для інтеграції з Irys
+    // Modify showModeSelection for Irys integration
     const originalShowModeSelection = game.showModeSelection.bind(game);
     game.showModeSelection = function () {
       originalShowModeSelection();
 
-      // Додаємо обробники для кнопок режимів з Irys транзакціями
+      // Add handlers for mode buttons with Irys transactions
       setTimeout(() => {
         const endlessBtn = document.getElementById('endless-mode');
         const timedBtn = document.getElementById('timed-mode');
@@ -200,30 +225,29 @@ function showGame() {
       }, 100);
     };
 
-    // Запускаємо вибір режиму гри
+    // Start mode selection
     game.showModeSelection();
     console.log('showGame: Mode selection started');
 
-    // Переконуємося що фон встановлений
     setGlobalBackground();
   } catch (error) {
     console.error('showGame: Error creating game:', error);
+    alert('Failed to load game. Please refresh the page and try again.');
   }
 }
 
 function showLeaderboard() {
-  // Зберігаємо фон в лідерборді
   setGlobalBackground();
 
   const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
   const currentPlayerName = localStorage.getItem('playerName') || 'Anonymous';
 
-  // Знаходимо найкращий результат поточного гравця
+  // Find best result of current player
   const playerResults = leaderboard.filter(entry => entry.name === currentPlayerName);
   const bestPlayerResult = playerResults.length > 0 ?
     playerResults.reduce((best, current) => current.score > best.score ? current : best) : null;
 
-  // Знаходимо позицію найкращого результату гравця в загальному рейтингу
+  // Find position of best player result in overall ranking
   let playerPosition = null;
   if (bestPlayerResult) {
     playerPosition = leaderboard.findIndex(entry =>
@@ -233,7 +257,7 @@ function showLeaderboard() {
     ) + 1;
   }
 
-  // Створюємо блок з найкращим результатом гравця
+  // Create player best section
   let playerBestSection = '';
   if (bestPlayerResult) {
     playerBestSection = `
@@ -257,7 +281,7 @@ function showLeaderboard() {
     `;
   }
 
-  // Створюємо рядки таблиці з виділенням результатів поточного гравця
+  // Create table rows with highlighting for current player results
   let tableRows = leaderboard.map((entry, idx) => {
     const isCurrentPlayer = entry.name === currentPlayerName;
     const rowStyle = isCurrentPlayer ?
@@ -282,7 +306,6 @@ function showLeaderboard() {
     tableRows = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#999; font-style:italic;">No results yet</td></tr>';
   }
 
-  // Показуємо кількість записів
   const recordsCount = leaderboard.length;
   const recordsInfo = recordsCount > 10 ?
     `<p style="color:#666; font-size:0.9rem; margin-bottom:16px;">Showing ${recordsCount} results - scroll to see more</p>` :
@@ -316,32 +339,27 @@ function showLeaderboard() {
   `;
   smoothTransition(content);
 
-  // Додаємо event listeners відразу без затримки
   document.getElementById('back-menu').onclick = showMainMenu;
   document.getElementById('admin-clear').onclick = function () {
-    // Запитуємо пароль адміністратора
     const password = prompt('Enter admin password to clear leaderboard:');
 
     if (password === 'IrysOwner2024') {
-      // Правильний пароль - підтверджуємо дію
       if (confirm('Admin access confirmed. Are you sure you want to clear the entire leaderboard? This action cannot be undone.')) {
         localStorage.removeItem('bubbleLeaderboard');
         alert('Leaderboard cleared successfully!');
-        showLeaderboard(); // Оновлюємо відображення
+        showLeaderboard();
       }
     } else if (password !== null) {
-      // Неправильний пароль (але не скасовано)
       alert('Access denied. Invalid admin password.');
     }
-    // Якщо password === null, користувач скасував - нічого не робимо
   };
 }
 
-// Глобальні змінні для роботи з гаманцем
+// Global variables for wallet
 let connectedWallet = null;
 let walletAddress = null;
 
-// Функція для підключення гаманця
+// Function to show wallet connection
 function showWalletConnection() {
   setGlobalBackground();
 
@@ -384,7 +402,6 @@ function showWalletConnection() {
 
   smoothTransition(content);
 
-  // Додаємо event listeners
   document.getElementById('back-menu').onclick = showMainMenu;
 
   if (connectedWallet) {
@@ -394,7 +411,6 @@ function showWalletConnection() {
     document.getElementById('rabby-btn').onclick = () => connectWallet('rabby');
     document.getElementById('okx-btn').onclick = () => connectWallet('okx');
 
-    // Додаємо hover ефекти для кнопок гаманців
     document.querySelectorAll('.wallet-btn').forEach(btn => {
       btn.onmouseover = () => {
         btn.style.transform = 'translateY(-2px)';
@@ -408,7 +424,7 @@ function showWalletConnection() {
   }
 }
 
-// Функція для підключення гаманця
+// Function to connect wallet
 async function connectWallet(walletType) {
   const statusDiv = document.getElementById('wallet-status');
 
@@ -447,20 +463,17 @@ async function connectWallet(walletType) {
         break;
     }
 
-    // Запитуємо дозвіл на підключення
     const accounts = await provider.request({ method: 'eth_requestAccounts' });
 
     if (accounts.length > 0) {
       connectedWallet = walletName;
       walletAddress = accounts[0];
 
-      // Зберігаємо в localStorage
       localStorage.setItem('connectedWallet', walletName);
       localStorage.setItem('walletAddress', walletAddress);
 
       statusDiv.innerHTML = '<div style="color:#27ae60;">✅ Successfully connected!</div>';
 
-      // Оновлюємо інтерфейс через 1 секунду
       setTimeout(() => {
         showWalletConnection();
       }, 1000);
@@ -475,20 +488,18 @@ async function connectWallet(walletType) {
   }
 }
 
-// Функція для відключення гаманця
+// Function to disconnect wallet
 function disconnectWallet() {
   connectedWallet = null;
   walletAddress = null;
 
-  // Видаляємо з localStorage
   localStorage.removeItem('connectedWallet');
   localStorage.removeItem('walletAddress');
 
-  // Оновлюємо інтерфейс
   showWalletConnection();
 }
 
-// Функція для перевірки збереженого підключення при завантаженні
+// Function to check saved wallet connection on load
 function checkSavedWalletConnection() {
   const savedWallet = localStorage.getItem('connectedWallet');
   const savedAddress = localStorage.getItem('walletAddress');
@@ -500,7 +511,6 @@ function checkSavedWalletConnection() {
 }
 
 function showSettings() {
-  // Зберігаємо фон в налаштуваннях
   setGlobalBackground();
 
   const savedName = localStorage.getItem('playerName') || '';
@@ -512,7 +522,7 @@ function showSettings() {
         <input type="text" id="player-name" name="player-name" value="${savedName}" maxlength="16" placeholder="Enter your name" style="margin:18px 0 12px 0; padding:14px; border-radius:12px; border:1.5px solid #43cea2; width:220px; font-size:1.1rem; background:#f7fafc; box-shadow:0 2px 8px rgba(67,206,162,0.07); transition:border 0.3s ease-in-out;" required><br>
         <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
           <button type="submit" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);">Save</button>
-                      <button id="back-menu" type="button" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Back</button>
+          <button id="back-menu" type="button" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Back</button>
         </div>
       </form>
       <div id="settings-msg" style="color:#2193b0; margin-top:14px; font-size:1.05rem;"></div>
@@ -520,7 +530,6 @@ function showSettings() {
   `;
   smoothTransition(content);
 
-  // Додаємо event listeners відразу без затримки
   document.getElementById('back-menu').onclick = showMainMenu;
   document.getElementById('settings-form').onsubmit = function (e) {
     e.preventDefault();
@@ -534,58 +543,83 @@ function showSettings() {
   };
 }
 
-// Ініціалізація при завантаженні
+// Initialize on load
 document.addEventListener('DOMContentLoaded', function () {
-  // Встановлюємо фон відразу
+  console.log('🎯 DOM loaded, initializing app...');
   setGlobalBackground();
-
-  // Перевіряємо збережене підключення гаманця
   checkSavedWalletConnection();
 
-  // Прибираємо всі переходи з app
   const app = document.getElementById('app');
   app.style.transition = 'none';
   app.style.opacity = '1';
+  
+  // Show main menu after everything is initialized
+  showMainMenu();
 });
 
-// Функція для запуску гри з Irys транзакцією
+// Function to start game with Irys transaction
 async function startGameWithTransaction(gameMode, gameInstance) {
   try {
     console.log(`🚀 Starting ${gameMode} mode with Irys transaction...`);
     console.log('Connected wallet:', connectedWallet);
     console.log('Wallet address:', walletAddress);
 
-    // Показуємо модальне вікно підтвердження транзакції
     showTransactionModal(gameMode, async () => {
+      const statusDiv = document.getElementById('transaction-status');
+      
       try {
-        // Ініціалізуємо Irys інтеграцію
         if (typeof window.IrysIntegration !== 'undefined') {
+          // Update status
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing Irys connection...</div>';
+          
+          // Get the correct provider based on connected wallet
+          let provider = window.ethereum;
+          if (connectedWallet === 'OKX Wallet' && window.okxwallet) {
+            provider = window.okxwallet;
+          }
+          
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Creating transaction...</div>';
+          
           const result = await window.IrysIntegration.startGameWithIrys(
             gameMode,
-            window.ethereum,
+            provider,
             walletAddress
           );
 
           if (result.success) {
+            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction successful!</div>';
             console.log('✅ Transaction successful, starting game...');
-            hideTransactionModal();
-
-            // Запускаємо гру з обраним режимом
-            gameInstance.gameMode = gameMode;
-            gameInstance.init();
+            
+            // Show success message briefly before starting game
+            setTimeout(() => {
+              hideTransactionModal();
+              gameInstance.gameMode = gameMode;
+              gameInstance.init();
+            }, 1500);
+            
           } else {
             throw new Error(result.error || 'Transaction failed');
           }
         } else {
           console.warn('⚠️ Irys integration not available, starting game without transaction');
-          hideTransactionModal();
-          gameInstance.gameMode = gameMode;
-          gameInstance.init();
+          statusDiv.innerHTML = '<div style="color: #e67e22;">⚠️ Irys not available, starting without transaction...</div>';
+          
+          setTimeout(() => {
+            hideTransactionModal();
+            gameInstance.gameMode = gameMode;
+            gameInstance.init();
+          }, 1000);
         }
       } catch (error) {
         console.error('❌ Transaction failed:', error);
-        hideTransactionModal();
-        alert(`Transaction failed: ${error.message}`);
+        statusDiv.innerHTML = `<div style="color: #e74c3c;">❌ Transaction failed: ${error.message}</div>`;
+        
+        // Re-enable the confirm button
+        const confirmBtn = document.getElementById('confirm-transaction');
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.style.opacity = '1';
+        }
       }
     });
 
@@ -595,7 +629,7 @@ async function startGameWithTransaction(gameMode, gameInstance) {
   }
 }
 
-// Функція для показу модального вікна транзакції
+// Function to show transaction modal
 function showTransactionModal(gameMode, onConfirm) {
   const modal = document.createElement('div');
   modal.id = 'transaction-modal';
@@ -636,11 +670,21 @@ function showTransactionModal(gameMode, onConfirm) {
         This will create a game session record on the decentralized network.
       </p>
       
+      <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0 0 10px 0; font-size: 0.9rem; color: #856404; font-weight: bold;">
+          ⚠️ <strong>Testnet Requirements:</strong>
+        </p>
+        <p style="margin: 0; font-size: 0.85rem; color: #856404;">
+          You need Irys testnet $IRYS to pay for transactions. Get free testnet $IRYS from:
+          <br><a href="https://irys.xyz/faucet" target="_blank" style="color: #2193b0;">Irys faucet - https://irys.xyz/faucet</a>
+        </p>
+      </div>
+      
       <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
         <p style="margin: 0; font-size: 0.9rem; color: #666;">
           📝 <strong>Game Mode:</strong> ${gameMode}<br>
           🌐 <strong>Network:</strong> Irys Testnet<br>
-          💰 <strong>Cost:</strong> Free (Testnet)
+          💰 <strong>Cost:</strong> 0.00000001 $IRYS
         </p>
       </div>
       
@@ -657,7 +701,7 @@ function showTransactionModal(gameMode, onConfirm) {
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
-        ">🚀 Sign & Start Game</button>
+        ">Start Game</button>
         
         <button id="cancel-transaction" style="
           padding: 12px 30px;
@@ -669,14 +713,13 @@ function showTransactionModal(gameMode, onConfirm) {
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
-        ">❌ Cancel</button>
+        ">Cancel</button>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
 
-  // Додаємо обробники подій
   document.getElementById('confirm-transaction').onclick = () => {
     document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
     document.getElementById('confirm-transaction').disabled = true;
@@ -686,7 +729,6 @@ function showTransactionModal(gameMode, onConfirm) {
 
   document.getElementById('cancel-transaction').onclick = hideTransactionModal;
 
-  // Закриття по кліку на фон
   modal.onclick = (e) => {
     if (e.target === modal) {
       hideTransactionModal();
@@ -694,7 +736,7 @@ function showTransactionModal(gameMode, onConfirm) {
   };
 }
 
-// Функція для приховування модального вікна транзакції
+// Function to hide transaction modal
 function hideTransactionModal() {
   const modal = document.getElementById('transaction-modal');
   if (modal) {
@@ -706,432 +748,3 @@ function hideTransactionModal() {
     }, 300);
   }
 }
-
-// Запуск з головного меню
-showMainMenu();
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Додаємо обробники подій
-  document.getElementById('confirm-transaction').onclick = () => {
-    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-    document.getElementById('confirm-transaction').disabled = true;
-    document.getElementById('confirm-transaction').style.opacity = '0.6';
-    onConfirm();
-  };
-
-  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-  // Закриття по кліку на фон
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      hideTransactionModal();
-    }
-  };
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu();
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Додаємо обробники подій
-  document.getElementById('confirm-transaction').onclick = () => {
-    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-    document.getElementById('confirm-transaction').disabled = true;
-    document.getElementById('confirm-transaction').style.opacity = '0.6';
-    onConfirm();
-  };
-
-  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-  // Закриття по кліку на фон
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      hideTransactionModal();
-    }
-  };
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu();
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Додаємо обробники подій
-  document.getElementById('confirm-transaction').onclick = () => {
-    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-    document.getElementById('confirm-transaction').disabled = true;
-    document.getElementById('confirm-transaction').style.opacity = '0.6';
-    onConfirm();
-  };
-
-  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-  // Закриття по кліку на фон
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      hideTransactionModal();
-    }
-  };
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu();
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Додаємо обробники подій
-  document.getElementById('confirm-transaction').onclick = () => {
-    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-    document.getElementById('confirm-transaction').disabled = true;
-    document.getElementById('confirm-transaction').style.opacity = '0.6';
-    onConfirm();
-  };
-
-  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-  // Закриття по кліку на фон
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      hideTransactionModal();
-    }
-  };
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu();
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Додаємо обробники подій
-  document.getElementById('confirm-transaction').onclick = () => {
-    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-    document.getElementById('confirm-transaction').disabled = true;
-    document.getElementById('confirm-transaction').style.opacity = '0.6';
-    onConfirm();
-  };
-
-  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-  // Закриття по кліку на фон
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      hideTransactionModal();
-    }
-  };
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu();
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Додаємо обробники подій
-  document.getElementById('confirm-transaction').onclick = () => {
-    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-    document.getElementById('confirm-transaction').disabled = true;
-    document.getElementById('confirm-transaction').style.opacity = '0.6';
-    onConfirm();
-  };
-
-  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-  // Закриття по кліку на фон
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      hideTransactionModal();
-    }
-  };
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu();
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Додаємо обробники подій
-  document.getElementById('confirm-transaction').onclick = () => {
-    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-    document.getElementById('confirm-transaction').disabled = true;
-    document.getElementById('confirm-transaction').style.opacity = '0.6';
-    onConfirm();
-  };
-
-  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-  // Закриття по кліку на фон
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      hideTransactionModal();
-    }
-  };
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu();
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Додаємо обробники подій
-  document.getElementById('confirm-transaction').onclick = () => {
-    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-    document.getElementById('confirm-transaction').disabled = true;
-    document.getElementById('confirm-transaction').style.opacity = '0.6';
-    onConfirm();
-  };
-
-  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-  // Закриття по кліку на фон
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      hideTransactionModal();
-    }
-  };
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu(); pendChild
-  (modal);
-
-// Додаємо обробники подій
-document.getElementById('confirm-transaction').onclick = () => {
-  document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-  document.getElementById('confirm-transaction').disabled = true;
-  document.getElementById('confirm-transaction').style.opacity = '0.6';
-  onConfirm();
-};
-
-document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-// Закриття по кліку на фон
-modal.onclick = (e) => {
-  if (e.target === modal) {
-    hideTransactionModal();
-  }
-};
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu(); 
-     </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Додаємо обробники подій
-  document.getElementById('confirm-transaction').onclick = () => {
-    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-    document.getElementById('confirm-transaction').disabled = true;
-    document.getElementById('confirm-transaction').style.opacity = '0.6';
-    onConfirm();
-  };
-
-  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-  // Закриття по кліку на фон
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      hideTransactionModal();
-    }
-  };
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu();o
-n>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Додаємо обробники подій
-  document.getElementById('confirm-transaction').onclick = () => {
-    document.getElementById('transaction-status').innerHTML = '<div style="color: #f39c12;">🔄 Processing transaction...</div>';
-    document.getElementById('confirm-transaction').disabled = true;
-    document.getElementById('confirm-transaction').style.opacity = '0.6';
-    onConfirm();
-  };
-
-  document.getElementById('cancel-transaction').onclick = hideTransactionModal;
-
-  // Закриття по кліку на фон
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      hideTransactionModal();
-    }
-  };
-}
-
-// Функція для приховування модального вікна транзакції
-function hideTransactionModal() {
-  const modal = document.getElementById('transaction-modal');
-  if (modal) {
-    modal.style.animation = 'fadeOut 0.3s ease-in';
-    setTimeout(() => {
-      if (modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-      }
-    }, 300);
-  }
-}
-
-// Запуск з головного меню
-showMainMenu();
