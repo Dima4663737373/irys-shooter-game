@@ -143,6 +143,23 @@ function showMainMenu() {
   document.getElementById('connect-wallet-btn').onclick = () => showWalletConnection();
   document.getElementById('leaderboard-btn').onclick = () => showLeaderboard();
   document.getElementById('settings-btn').onclick = () => showSettings();
+  
+  // Тестова кнопка для модального вікна (тимчасово)
+  const testBtn = document.createElement('button');
+  testBtn.textContent = '🧪 Test Modal';
+  testBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 9999; padding: 10px; background: #ff6b6b; color: white; border: none; border-radius: 5px; cursor: pointer;';
+  testBtn.onclick = () => {
+    console.log('🧪 Testing transaction modal...');
+    // Встановлюємо тестові дані
+    window.connectedWallet = 'Test Wallet';
+    window.walletAddress = '0x1234567890123456789012345678901234567890';
+    
+    showTransactionModal('endless', () => {
+      console.log('🧪 Test transaction confirmed');
+      hideTransactionModal();
+    });
+  };
+  document.body.appendChild(testBtn);
 }
 
 function showGame() {
