@@ -1028,7 +1028,7 @@ export class BubbleShooterGame {
     this.isPaused = false;
     this.score = 0;
     this.isGameOver = false;
-    this.lastTime = 0;
+    this.lastTime = null; // Змінено з 0 на null
     if (this.gameMode === 'timed') {
       this.timeLeft = 60;
       this.dropTimer = 10;
@@ -1114,7 +1114,7 @@ export class BubbleShooterGame {
   loop(currentTime) {
     if (this.isPaused || this.isGameOver) return;
     if (!this.lastTime) this.lastTime = currentTime;
-    const deltaTime = (currentTime - this.lastTime) / 1000;
+    let deltaTime = (currentTime - this.lastTime) / 1000; // Змінено const на let
     this.lastTime = currentTime;
     // FPS
     this.frameCounter++;
@@ -1125,6 +1125,12 @@ export class BubbleShooterGame {
     }
     // Game mode logic
     if (this.gameMode === 'timed') {
+      // Перевіряємо deltaTime на коректність
+      if (isNaN(deltaTime) || deltaTime < 0 || deltaTime > 1) {
+        console.warn('⚠️ Invalid deltaTime detected:', deltaTime);
+        deltaTime = 1/60; // Тепер це працюватиме правильно
+      }
+      
       this.timeLeft -= deltaTime;
       this.dropTimer -= deltaTime;
       this.updateTimer();
@@ -1163,6 +1169,12 @@ export class BubbleShooterGame {
 
   updateTimer() {
     if (this.timerEl) {
+      // Додаткова перевірка на NaN та некоректні значення
+      if (isNaN(this.timeLeft) || this.timeLeft === undefined || this.timeLeft === null) {
+        console.warn('⚠️ timeLeft is NaN or invalid, resetting to 0');
+        this.timeLeft = 0;
+      }
+      
       const seconds = Math.max(0, Math.ceil(this.timeLeft));
       this.timerEl.textContent = `Time: ${seconds}s`;
     }
@@ -1715,6 +1727,9 @@ export class BubbleShooterGame {
   resumeGame() {
     this.isPaused = false;
     this.pauseMenu.classList.add('hidden');
+
+    // 🔧 ВИПРАВЛЕННЯ: Скидаємо lastTime щоб уникнути великого deltaTime
+    this.lastTime = null; // Змінено з 0 на null
 
     // Відновлюємо таймер ходу для безкінечного режиму
     if (this.gameMode === 'endless' && this.shootingBubble && !this.shootingBubble.moving && !this.isGameOver) {
@@ -2302,4 +2317,4 @@ export class BubbleShooterGame {
 
     return sortedNeighbors.length > 0 ? sortedNeighbors[0] : null;
   }
-} 
+}
