@@ -477,6 +477,7 @@ const IrysNetworkIntegration = {
   
   // Start game session on Irys Network
   // Start game session on Irys Network
+  // Start game session on Irys Network
   async startGameSession(gameMode, walletAddress) {
     try {
       console.log("🔄 Starting game session on Irys Network...");
