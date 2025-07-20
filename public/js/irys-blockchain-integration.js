@@ -430,7 +430,7 @@ const IrysNetworkIntegration = {
               </div>
             </div>
             
-            <div style="display: flex; gap: 15px; justify-content: center;">
+            <div style="display: flex; gap: 15px; justify-content: center; width: 100%; flex-wrap: wrap;">
               <button id="confirm-tx" style="
                 background: linear-gradient(45deg, #00ff00, #00cc00);
                 color: #000;
@@ -441,6 +441,9 @@ const IrysNetworkIntegration = {
                 cursor: pointer;
                 font-size: 16px;
                 transition: all 0.3s;
+                flex: 1;
+                min-width: 120px;
+                max-width: 45%;
               ">CONFIRM ON IRYS</button>
               
               <button id="cancel-tx" style="
@@ -453,6 +456,9 @@ const IrysNetworkIntegration = {
                 cursor: pointer;
                 font-size: 16px;
                 transition: all 0.3s;
+                flex: 1;
+                min-width: 120px;
+                max-width: 45%;
               ">CANCEL</button>
             </div>
           </div>

@@ -198,7 +198,7 @@ export class GameManager {
           <div style="color: #888; font-size: 14px;">Fee: <span style="color: #00ffff; font-weight: bold;">~0.0001 IRYS</span></div>
         </div>
         <div id="transaction-status" style="margin: 16px 0; min-height: 24px;"></div>
-        <div style="display: flex; gap: 12px; justify-content: center;">
+        <div style="display: flex; gap: 12px; justify-content: center; width: 100%; flex-wrap: wrap;">
           <button id="confirm-transaction" style="
             padding: 12px 24px;
             background: linear-gradient(45deg, #43cea2, #185a9d);
@@ -207,6 +207,9 @@ export class GameManager {
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
+            flex: 1;
+            min-width: 120px;
+            max-width: 45%;
           ">Confirm on Irys</button>
           <button id="cancel-transaction" style="
             padding: 12px 24px;
@@ -216,6 +219,9 @@ export class GameManager {
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
+            flex: 1;
+            min-width: 120px;
+            max-width: 45%;
           ">Cancel</button>
         </div>
       </div>

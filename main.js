@@ -780,102 +780,72 @@ function showTransactionModal(gameMode, onConfirm) {
 
   modal.innerHTML = `
     <div style="
-      background: white;
-      border-radius: 20px;
-      padding: 40px;
-      max-width: 600px;
-      width: 90%;
+      background: linear-gradient(135deg, #2c3e50, #34495e);
+      border: 2px solid #1abc9c;
+      border-radius: 15px;
+      padding: 25px;
+      max-width: 400px;
+      width: 85%;
       text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      animation: slideInUp 0.4s ease-out;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+      color: white;
     ">
-      <h2 style="color: #2193b0; margin-bottom: 20px; font-size: 1.8rem;">🎮 Start ${gameMode.charAt(0).toUpperCase() + gameMode.slice(1)} Mode</h2>
+      <h2 style="color: #1abc9c; margin: 0 0 15px 0; font-size: 1.4rem;">Start ${gameMode} Game on Irys Network</h2>
       
-      <div style="background: linear-gradient(135deg, #43cea2, #185a9d); color: white; padding: 20px; border-radius: 12px; margin: 20px 0;">
-        <p style="margin: 0 0 10px 0; font-size: 1.1rem;">🔗 Connected Wallet:</p>
-        <p style="margin: 0; font-size: 0.9rem; opacity: 0.9; word-break: break-all;">${walletAddress}</p>
-      </div>
-      
-      <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: left;">
-        <h3 style="color: #2193b0; margin: 0 0 15px 0; font-size: 1.2rem;">📋 Transaction Details</h3>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 0.9rem;">
-          <div>
-            <strong style="color: #495057;">Network:</strong>
-            <div style="color: #6c757d;">Irys Network (Devnet)</div>
-          </div>
-          <div>
-            <strong style="color: #495057;">Game Mode:</strong>
-            <div style="color: #6c757d;">${gameMode.charAt(0).toUpperCase() + gameMode.slice(1)}</div>
-          </div>
-          <div>
-            <strong style="color: #495057;">Smart Contract:</strong>
-            <div style="color: #6c757d;">IrysGameContract</div>
-          </div>
-          <div>
-            <strong style="color: #495057;">Fee:</strong>
-            <div style="color: #6c757d;">~0.0001 IRYS</div>
-          </div>
-        </div>
-        
-        <div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
-          <p style="margin: 0; font-size: 0.85rem; color: #1565c0;">
-            <strong>ℹ️ What happens:</strong><br>
-            1. Game data uploaded to Irys Network<br>
-            2. Smart contract transaction created<br>
-            3. Game session recorded on blockchain
-          </p>
-        </div>
-      </div>
-      
-      <p style="color: #666; margin: 20px 0; font-size: 1rem;">
-        To start the game, you need to sign two transactions: one for Irys Network data upload and one for the smart contract. 
-        This will create a game session record on the blockchain.
+      <p style="color: #bdc3c7; margin: 15px 0; font-size: 0.9rem; line-height: 1.4;">
+        This will create a blockchain transaction on Irys Network to start your game session. A small fee (~0.0001 IRYS) will be charged.
       </p>
       
-      <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
-        <p style="margin: 0 0 10px 0; font-size: 0.9rem; color: #856404; font-weight: bold;">
-          ⚠️ <strong>Testnet Requirements:</strong>
-        </p>
-        <p style="margin: 0; font-size: 0.85rem; color: #856404;">
-          You need Irys testnet tokens to pay for transactions. Get free testnet IRYS from:
-          <br><a href="https://faucet.irys.xyz/" target="_blank" style="color: #2193b0;">Irys Faucet</a>
-        </p>
+      <div style="
+        background: rgba(26, 188, 156, 0.2);
+        border: 1px solid #1abc9c;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 20px 0;
+        font-size: 0.85rem;
+      ">
+        <div style="margin-bottom: 8px;"><strong>Network:</strong> <span style="color: #1abc9c;">Irys Network Testnet</span></div>
+        <div><strong>Fee:</strong> <span style="color: #1abc9c;">~0.0001 IRYS</span></div>
       </div>
       
-      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-        <p style="margin: 0; font-size: 0.9rem; color: #666;">
-          📝 <strong>Game Mode:</strong> ${gameMode}<br>
-          🌐 <strong>Network:</strong> Irys Network Testnet<br>
-          💰 <strong>Cost:</strong> 0.0001 IRYS
-        </p>
-      </div>
+      <div id="transaction-status" style="margin: 15px 0; font-size: 0.85rem;"></div>
       
-      <div id="transaction-status" style="margin: 20px 0; padding: 10px; border-radius: 8px; font-size: 0.9rem;"></div>
-      
-      <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+      <div style="
+        display: flex;
+        gap: 8px;
+        margin-top: 25px;
+        justify-content: center;
+        flex-wrap: wrap;
+        width: 100%;
+      ">
         <button id="confirm-transaction" style="
-          padding: 12px 30px;
-          background: linear-gradient(135deg, #43cea2, #185a9d);
+          padding: 10px 16px;
+          background: linear-gradient(135deg, #1abc9c, #16a085);
           color: white;
           border: none;
-          border-radius: 10px;
-          font-size: 1.1rem;
+          border-radius: 8px;
+          font-size: 0.85rem;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
-        ">Start Game</button>
+          flex: 1;
+          min-width: 80px;
+          max-width: 45%;
+        ">Confirm on Irys</button>
         
         <button id="cancel-transaction" style="
-          padding: 12px 30px;
-          background: #e74c3c;
+          padding: 10px 16px;
+          background: linear-gradient(135deg, #e74c3c, #c0392b);
           color: white;
           border: none;
-          border-radius: 10px;
-          font-size: 1.1rem;
+          border-radius: 8px;
+          font-size: 0.85rem;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
+          flex: 1;
+          min-width: 80px;
+          max-width: 45%;
         ">Cancel</button>
       </div>
     </div>
@@ -911,8 +881,3 @@ function hideTransactionModal() {
     }, 300);
   }
 }
-// Видаліть ці рядки:
-// // Поточний код очікує tx.wait()
-// const tx = await this.contract.startGameSession(sessionId, gameMode, irysTransactionId, { value: fee });
-// const receipt = await tx.wait(); // ⏳ Очікує підтвердження
-// // Тільки після цього запускається гра
