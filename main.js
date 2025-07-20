@@ -911,7 +911,3 @@ function hideTransactionModal() {
     }, 300);
   }
 }
-// Поточний код очікує tx.wait()
-const tx = await this.contract.startGameSession(sessionId, gameMode, irysTransactionId, { value: fee });
-const receipt = await tx.wait(); // ⏳ Очікує підтвердження
-// Тільки після цього запускається гра
