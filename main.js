@@ -675,13 +675,7 @@ async function startGameWithTransaction(gameMode, gameInstance) {
           const result = await window.IrysNetworkIntegration.startGameSession(gameMode, walletAddress);
 
           if (result.success) {
-            statusDiv.innerHTML = `
-              <div style="color: #27ae60;">✅ Transaction successful!</div>
-              <div style="font-size: 0.8rem; margin-top: 8px; color: #666;">
-                Smart Contract: ${result.smartContractTxHash.substring(0, 10)}...
-                <br>Irys Network: ${result.irysTransactionId.substring(0, 10)}...
-              </div>
-            `;
+            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction signed! Starting game...</div>';
             console.log('✅ Irys Network transaction successful, starting game...');
             console.log('Smart Contract TX:', result.smartContractTxHash);
             console.log('Irys Network TX:', result.irysTransactionId);
@@ -691,12 +685,15 @@ async function startGameWithTransaction(gameMode, gameInstance) {
             window.currentIrysTransactionId = result.irysTransactionId;
             window.currentSmartContractTxHash = result.smartContractTxHash;
             
-            // Show success message briefly before starting game
-            setTimeout(() => {
-              hideTransactionModal();
-              gameInstance.gameMode = gameMode;
-              gameInstance.init();
-            }, 2000);
+            // Immediately start the game
+            hideTransactionModal();
+            gameInstance.gameMode = gameMode;
+            gameInstance.init();
+            
+            // Show in-game notification about transaction status
+            if (result.pending) {
+              showNotification(`Transaction pending: ${result.transactionHash.substring(0, 10)}...`, 'info');
+            }
             
           } else {
             throw new Error(result.error || 'Irys Network transaction failed');
@@ -914,3 +911,7 @@ function hideTransactionModal() {
     }, 300);
   }
 }
+// Поточний код очікує tx.wait()
+const tx = await this.contract.startGameSession(sessionId, gameMode, irysTransactionId, { value: fee });
+const receipt = await tx.wait(); // ⏳ Очікує підтвердження
+// Тільки після цього запускається гра

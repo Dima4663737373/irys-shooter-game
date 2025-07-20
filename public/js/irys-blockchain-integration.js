@@ -519,55 +519,57 @@ const IrysNetworkIntegration = {
       
       console.log(`💰 Game mode '${gameMode}' fee: ${ethers.utils.formatEther(fee)} IRYS`);
       
-      // Show transaction details and get user confirmation
-      const confirmed = await this.showTransactionDetails(gameMode, fee);
-      if (!confirmed) {
-        return {
-          success: false,
-          error: "Transaction cancelled by user"
-        };
-      }
+      // ВИДАЛЕНО: Показ модального вікна з деталями транзакції
+      // const confirmed = await this.showTransactionDetails(gameMode, fee);
+      // if (!confirmed) {
+      //   return {
+      //     success: false,
+      //     error: "Transaction cancelled by user"
+      //   };
+      // }
       
-      // Create and send transaction for user to sign
+      // ВІДРАЗУ створюємо та відправляємо транзакцію для підпису
       console.log("🔄 Creating blockchain transaction for user signature...");
       console.log(`📝 Session ID: ${sessionId}`);
       console.log(`🎮 Game Mode: ${gameMode}`);
       console.log(`🆔 Irys Transaction ID: ${irysTransactionId}`);
       console.log(`💰 Fee: ${ethers.utils.formatEther(fee)} IRYS`);
       
-      // This will automatically prompt user to sign the transaction
+      // Створити та підписати транзакцію (відразу викликає MetaMask)
       const tx = await this.contract.startGameSession(
         sessionId, 
         gameMode,
         irysTransactionId,
         {
           value: fee,
-          gasLimit: 300000  // Set gas limit to avoid estimation issues
+          gasLimit: 300000
         }
       );
       
       console.log("✅ Transaction signed by user!");
       console.log(`📋 Transaction hash: ${tx.hash}`);
-      console.log("🔄 Waiting for transaction confirmation...");
       
-      // Wait for transaction to be mined
-      const receipt = await tx.wait();
+      // 🚀 НЕГАЙНО повертаємо успіх після підпису (не чекаємо підтвердження)
+      console.log("🎮 Starting game immediately after signature...");
       
-      console.log("✅ Game session started successfully on Irys Network!");
-      console.log("Irys Network transaction hash:", receipt.transactionHash);
-      console.log("Explorer URL:", `https://testnet-explorer.irys.xyz/tx/${receipt.transactionHash}`);
+      // Запускаємо підтвердження в фоні (не блокуємо гру)
+      tx.wait().then(receipt => {
+        console.log("✅ Transaction confirmed in background:", receipt.transactionHash);
+        console.log("Explorer URL:", `https://testnet-explorer.irys.xyz/tx/${receipt.transactionHash}`);
+      }).catch(error => {
+        console.warn("⚠️ Transaction confirmation failed (but game already started):", error);
+      });
       
       return {
         success: true,
         network: "Irys Network",
-        transactionHash: receipt.transactionHash,
-        explorerUrl: `https://testnet-explorer.irys.xyz/tx/${receipt.transactionHash}`,
+        transactionHash: tx.hash,
+        explorerUrl: `https://testnet-explorer.irys.xyz/tx/${tx.hash}`,
         sessionId: sessionId,
         gameMode: gameMode,
         fee: ethers.utils.formatEther(fee),
         irysTransactionId: irysTransactionId,
-        blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed.toString()
+        pending: true
       };
       
     } catch (error) {
