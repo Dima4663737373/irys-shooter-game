@@ -6,9 +6,16 @@
     "start": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "dev": "vite"
+    "dev": "vite",
+    "compile": "hardhat compile",
+    "deploy:irys": "hardhat run scripts/deploy.js --network irysTestnet"
   },
   "dependencies": {
     "vite": "^5.0.0"
+  },
+  "devDependencies": {
+    "hardhat": "^2.26.0",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "dotenv": "^16.0.0"
   }
-} 
+}

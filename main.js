@@ -32,13 +32,14 @@ async function loadGameModule() {
   return BubbleShooterGame;
 }
 
-// Global function to save results to leaderboard
-function saveToLeaderboard(score, gameMode = 'endless') {
+// Global function to save results to leaderboard and Irys Network
+async function saveToLeaderboard(score, gameMode = 'endless') {
   console.log(`🏆 saveToLeaderboard called: score=${score}, gameMode=${gameMode}`);
 
   const playerName = localStorage.getItem('playerName') || 'Anonymous';
   console.log(`👤 Player name: ${playerName}`);
 
+  // Save to local leaderboard
   const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
   console.log(`📊 Current leaderboard has ${leaderboard.length} entries`);
 
@@ -63,6 +64,81 @@ function saveToLeaderboard(score, gameMode = 'endless') {
   localStorage.setItem('bubbleLeaderboard', JSON.stringify(topResults));
   console.log(`💾 Result saved! Now leaderboard has ${topResults.length} entries`);
   console.log(`📋 Top 3 results:`, topResults.slice(0, 3));
+
+  // Try to save to Irys Network if available
+  if (window.currentGameSession && window.IrysNetworkIntegration && connectedWallet && walletAddress) {
+    try {
+      console.log('🔄 Attempting to save game result to Irys Network...');
+      
+      const result = await window.IrysNetworkIntegration.endGameSession(
+        window.currentGameSession, 
+        score, 
+        walletAddress
+      );
+      
+      if (result.success) {
+        console.log('✅ Game result saved to Irys Network successfully!');
+        console.log('Smart Contract TX:', result.smartContractTxHash);
+        console.log('Irys Network TX:', result.irysTransactionId);
+        
+        // Show success notification
+        showNotification('Game result saved to blockchain!', 'success');
+      } else {
+        console.warn('⚠️ Failed to save to Irys Network:', result.error);
+        showNotification('Game saved locally only', 'warning');
+      }
+    } catch (error) {
+      console.error('❌ Error saving to Irys Network:', error);
+      showNotification('Game saved locally only', 'warning');
+    }
+  } else {
+    console.log('ℹ️ Irys Network not available, saving locally only');
+  }
+}
+
+// Function to show notifications
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    z-index: 10001;
+    animation: slideInRight 0.3s ease-out;
+    max-width: 300px;
+    word-wrap: break-word;
+  `;
+  
+  switch (type) {
+    case 'success':
+      notification.style.background = '#27ae60';
+      break;
+    case 'warning':
+      notification.style.background = '#f39c12';
+      break;
+    case 'error':
+      notification.style.background = '#e74c3c';
+      break;
+    default:
+      notification.style.background = '#3498db';
+  }
+  
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  // Remove after 3 seconds
+  setTimeout(() => {
+    notification.style.animation = 'slideOutRight 0.3s ease-out';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
 }
 
 // Function to set background
@@ -560,7 +636,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // Function to start game with Irys transaction
 async function startGameWithTransaction(gameMode, gameInstance) {
   try {
-    console.log(`🚀 Starting ${gameMode} mode with Irys transaction...`);
+    console.log(`🚀 Starting ${gameMode} mode with Irys Network transaction...`);
     console.log('Connected wallet:', connectedWallet);
     console.log('Wallet address:', walletAddress);
 
@@ -568,9 +644,9 @@ async function startGameWithTransaction(gameMode, gameInstance) {
       const statusDiv = document.getElementById('transaction-status');
       
       try {
-        if (typeof window.IrysIntegration !== 'undefined') {
-          // Update status
-          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing Irys connection...</div>';
+        // Use Irys Contract integration (primary)
+        if (typeof window.IrysContractIntegration !== 'undefined') {
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing Irys Network + Smart Contract...</div>';
           
           // Get the correct provider based on connected wallet
           let provider = window.ethereum;
@@ -578,19 +654,77 @@ async function startGameWithTransaction(gameMode, gameInstance) {
             provider = window.okxwallet;
           }
           
-          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Creating transaction...</div>';
+          // Initialize Irys Contract integration
+          const initialized = await window.IrysContractIntegration.initialize(provider);
+          if (!initialized) {
+            throw new Error("Failed to initialize Irys Network + Smart Contract");
+          }
           
-          const result = await window.IrysIntegration.startGameWithIrys(
-            gameMode,
-            provider,
-            walletAddress
-          );
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Checking Irys Network connection...</div>';
+          
+          // Check Irys balance
+          try {
+            const irysBalance = await window.IrysContractIntegration.getIrysBalance(walletAddress);
+            console.log('Irys balance:', irysBalance);
+          } catch (balanceError) {
+            console.warn("⚠️ Could not check Irys balance:", balanceError.message);
+          }
+          
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Creating Irys Network transaction...</div>';
+          
+          const result = await window.IrysNetworkIntegration.startGameSession(gameMode, walletAddress);
+
+          if (result.success) {
+            statusDiv.innerHTML = `
+              <div style="color: #27ae60;">✅ Transaction successful!</div>
+              <div style="font-size: 0.8rem; margin-top: 8px; color: #666;">
+                Smart Contract: ${result.smartContractTxHash.substring(0, 10)}...
+                <br>Irys Network: ${result.irysTransactionId.substring(0, 10)}...
+              </div>
+            `;
+            console.log('✅ Irys Network transaction successful, starting game...');
+            console.log('Smart Contract TX:', result.smartContractTxHash);
+            console.log('Irys Network TX:', result.irysTransactionId);
+            
+            // Store session ID and transaction info for later use
+            window.currentGameSession = result.sessionId;
+            window.currentIrysTransactionId = result.irysTransactionId;
+            window.currentSmartContractTxHash = result.smartContractTxHash;
+            
+            // Show success message briefly before starting game
+            setTimeout(() => {
+              hideTransactionModal();
+              gameInstance.gameMode = gameMode;
+              gameInstance.init();
+            }, 2000);
+            
+          } else {
+            throw new Error(result.error || 'Irys Network transaction failed');
+          }
+        } else if (typeof window.SimpleTestIntegration !== 'undefined') {
+          // Fallback to Simple Test integration
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing blockchain connection...</div>';
+          
+          let provider = window.ethereum;
+          if (connectedWallet === 'OKX Wallet' && window.okxwallet) {
+            provider = window.okxwallet;
+          }
+          
+          const initialized = await window.SimpleTestIntegration.initialize(provider);
+          if (!initialized) {
+            throw new Error("Failed to initialize blockchain connection");
+          }
+          
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Creating blockchain transaction...</div>';
+          
+          const result = await window.IrysNetworkIntegration.startGameSession(gameMode, walletAddress);
 
           if (result.success) {
             statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction successful!</div>';
             console.log('✅ Transaction successful, starting game...');
             
-            // Show success message briefly before starting game
+            window.currentGameSession = result.sessionId;
+            
             setTimeout(() => {
               hideTransactionModal();
               gameInstance.gameMode = gameMode;
@@ -601,8 +735,8 @@ async function startGameWithTransaction(gameMode, gameInstance) {
             throw new Error(result.error || 'Transaction failed');
           }
         } else {
-          console.warn('⚠️ Irys integration not available, starting game without transaction');
-          statusDiv.innerHTML = '<div style="color: #e67e22;">⚠️ Irys not available, starting without transaction...</div>';
+          console.warn('⚠️ No blockchain integration available, starting game without transaction');
+          statusDiv.innerHTML = '<div style="color: #e67e22;">⚠️ Blockchain not available, starting without transaction...</div>';
           
           setTimeout(() => {
             hideTransactionModal();
@@ -652,7 +786,7 @@ function showTransactionModal(gameMode, onConfirm) {
       background: white;
       border-radius: 20px;
       padding: 40px;
-      max-width: 500px;
+      max-width: 600px;
       width: 90%;
       text-align: center;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -665,9 +799,41 @@ function showTransactionModal(gameMode, onConfirm) {
         <p style="margin: 0; font-size: 0.9rem; opacity: 0.9; word-break: break-all;">${walletAddress}</p>
       </div>
       
+      <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: left;">
+        <h3 style="color: #2193b0; margin: 0 0 15px 0; font-size: 1.2rem;">📋 Transaction Details</h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 0.9rem;">
+          <div>
+            <strong style="color: #495057;">Network:</strong>
+            <div style="color: #6c757d;">Irys Network (Devnet)</div>
+          </div>
+          <div>
+            <strong style="color: #495057;">Game Mode:</strong>
+            <div style="color: #6c757d;">${gameMode.charAt(0).toUpperCase() + gameMode.slice(1)}</div>
+          </div>
+          <div>
+            <strong style="color: #495057;">Smart Contract:</strong>
+            <div style="color: #6c757d;">IrysGameContract</div>
+          </div>
+          <div>
+            <strong style="color: #495057;">Fee:</strong>
+            <div style="color: #6c757d;">~0.0001 IRYS</div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+          <p style="margin: 0; font-size: 0.85rem; color: #1565c0;">
+            <strong>ℹ️ What happens:</strong><br>
+            1. Game data uploaded to Irys Network<br>
+            2. Smart contract transaction created<br>
+            3. Game session recorded on blockchain
+          </p>
+        </div>
+      </div>
+      
       <p style="color: #666; margin: 20px 0; font-size: 1rem;">
-        To start the game, you need to sign a transaction on the Irys testnet. 
-        This will create a game session record on the decentralized network.
+        To start the game, you need to sign two transactions: one for Irys Network data upload and one for the smart contract. 
+        This will create a game session record on the blockchain.
       </p>
       
       <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
@@ -675,16 +841,16 @@ function showTransactionModal(gameMode, onConfirm) {
           ⚠️ <strong>Testnet Requirements:</strong>
         </p>
         <p style="margin: 0; font-size: 0.85rem; color: #856404;">
-          You need Irys testnet $IRYS to pay for transactions. Get free testnet $IRYS from:
-          <br><a href="https://irys.xyz/faucet" target="_blank" style="color: #2193b0;">Irys faucet - https://irys.xyz/faucet</a>
+          You need Irys testnet tokens to pay for transactions. Get free testnet IRYS from:
+          <br><a href="https://faucet.irys.xyz/" target="_blank" style="color: #2193b0;">Irys Faucet</a>
         </p>
       </div>
       
       <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
         <p style="margin: 0; font-size: 0.9rem; color: #666;">
           📝 <strong>Game Mode:</strong> ${gameMode}<br>
-          🌐 <strong>Network:</strong> Irys Testnet<br>
-          💰 <strong>Cost:</strong> 0.00000001 $IRYS
+          🌐 <strong>Network:</strong> Irys Network Testnet<br>
+          💰 <strong>Cost:</strong> 0.0001 IRYS
         </p>
       </div>
       

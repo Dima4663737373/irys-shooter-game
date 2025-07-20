@@ -13,8 +13,37 @@
       <p>If this message persists, check the browser console for errors.</p>
     </div>
   </div>
-  <script type="module" src="main.js"></script>
-  <script src="https://unpkg.com/@irys/sdk@latest/build/web/bundle.js"></script>
+  
+  <!-- Try multiple CDN sources for ethers.js -->
+  <script 
+    src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"
+    onload="console.log('✅ ethers.js loaded successfully from unpkg:', typeof ethers !== 'undefined' ? ethers.version : 'FAILED')"
+    onerror="console.error('❌ Failed to load ethers.js from unpkg, trying jsdelivr...'); loadEthersFromJsdelivr();"
+  ></script>
+  
+  <script>
+    function loadEthersFromJsdelivr() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
+      script.onload = () => console.log('✅ ethers.js loaded successfully from jsdelivr:', typeof ethers !== 'undefined' ? ethers.version : 'FAILED');
+      script.onerror = () => {
+        console.error('❌ Failed to load ethers.js from jsdelivr, trying local fallback...');
+        alert('Failed to load ethers.js from CDN. Please check your internet connection.');
+      };
+      document.head.appendChild(script);
+    }
+  </script>
+  
+  <!-- Load blockchain integration scripts after ethers.js -->
+  <script src="irys-blockchain-integration.js" onload="console.log('✅ Irys Network integration loaded')"></script>
+  <script src="contract-integration.js"></script>
   <script src="irys-integration.js"></script>
+  
+  <!-- Load main application scripts after all dependencies -->
+  <script type="module" src="main.js"></script>
+  <script type="module" src="main-new.js"></script>
+  
+  <!-- Load additional scripts -->
+  <script src="example-usage.js"></script>
 </body>
 </html>
