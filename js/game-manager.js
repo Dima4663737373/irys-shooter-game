@@ -98,6 +98,8 @@ export class GameManager {
       console.log('Available integrations:');
       console.log('- IrysContractIntegration:', typeof window.IrysContractIntegration !== 'undefined');
       console.log('- SimpleBlockchainIntegration:', typeof window.SimpleBlockchainIntegration !== 'undefined');
+      console.log('- Window keys containing "Irys":', Object.keys(window).filter(key => key.toLowerCase().includes('irys')));
+      console.log('- All blockchain related keys:', Object.keys(window).filter(key => key.toLowerCase().includes('blockchain') || key.toLowerCase().includes('integration')));
   
       this.showTransactionModal(gameMode, async () => {
         const statusDiv = document.getElementById('transaction-status');
@@ -156,7 +158,28 @@ export class GameManager {
           
           // Check if any integration is available
           if (!integrationToUse) {
-            throw new Error('No blockchain integration available or all failed to initialize. Please refresh the page.');
+            // Last resort: check for inline fallback
+            if (typeof window.SimpleBlockchainIntegration !== 'undefined') {
+              console.log('🔄 Using inline fallback integration...');
+              statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Using fallback integration...</div>';
+              
+              try {
+                const initialized = await window.SimpleBlockchainIntegration.initialize(provider);
+                if (initialized) {
+                  integrationToUse = window.SimpleBlockchainIntegration;
+                  integrationName = 'Inline Fallback Integration';
+                  console.log('✅ Inline fallback integration initialized successfully');
+                } else {
+                  throw new Error('Inline fallback integration failed to initialize');
+                }
+              } catch (error) {
+                console.error('❌ Inline fallback integration failed:', error.message);
+              }
+            }
+            
+            if (!integrationToUse) {
+              throw new Error('No blockchain integration available or all failed to initialize. Please refresh the page and check console for details.');
+            }
           }
           
           console.log(`✅ Using ${integrationName}`);
