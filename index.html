@@ -18,79 +18,13 @@
   <script 
     src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"
     onload="console.log('✅ ethers.js loaded successfully:', typeof ethers !== 'undefined' ? ethers.version : 'FAILED')"
-    onerror="console.error('❌ Failed to load ethers.js from CDN')"
   ></script>
   
   <!-- Load Irys Contract Integration -->
-  <script src="./irys-contract-integration.js" 
-    onload="console.log('✅ IrysContractIntegration loaded:', typeof window.IrysContractIntegration !== 'undefined')"
-    onerror="console.error('❌ Failed to load irys-contract-integration.js')"></script>
+  <script src="irys-contract-integration.js" onload="console.log('✅ IrysContractIntegration loaded:', typeof window.IrysContractIntegration !== 'undefined')"></script>
   
   <!-- Load Irys Network Integration as fallback -->
-  <script src="./js/simple-blockchain-integration.js" 
-    onload="console.log('✅ SimpleBlockchainIntegration loaded:', typeof window.SimpleBlockchainIntegration !== 'undefined')"
-    onerror="console.error('❌ Failed to load simple-blockchain-integration.js')"></script>
-  
-  <!-- Inline fallback integration for production -->
-  <script>
-    // Inline fallback if external scripts fail to load
-    if (typeof window.SimpleBlockchainIntegration === 'undefined') {
-      console.log('🔄 Creating inline fallback integration...');
-      
-      window.SimpleBlockchainIntegration = {
-        async initialize(provider) {
-          console.log('🔄 Inline fallback: Initializing...');
-          try {
-            if (typeof ethers === 'undefined') {
-              throw new Error('ethers.js not available');
-            }
-            
-            // Simple initialization without network switching for fallback
-            const ethersProvider = new ethers.providers.Web3Provider(provider);
-            const network = await ethersProvider.getNetwork();
-            console.log(`🌐 Connected to network: ${network.chainId}`);
-            
-            return true;
-          } catch (error) {
-            console.error('❌ Inline fallback failed:', error);
-            return false;
-          }
-        },
-        
-        async startGameSession(gameMode, walletAddress) {
-          console.log(`🚀 Inline fallback: Starting ${gameMode} game session`);
-          
-          // Mock successful transaction for fallback
-          return {
-            success: true,
-            smartContractTxHash: '0x' + Math.random().toString(16).substr(2, 64),
-            irysTransactionId: 'fallback_' + Date.now(),
-            sessionId: 'session_' + Date.now(),
-            gameData: {
-              gameMode,
-              playerAddress: walletAddress,
-              timestamp: Date.now(),
-              action: "startGame",
-              version: "fallback"
-            }
-          };
-        },
-        
-        async endGameSession(sessionId, score, walletAddress) {
-          console.log(`🏁 Inline fallback: Ending game session ${sessionId} with score ${score}`);
-          
-          return {
-            success: true,
-            smartContractTxHash: '0x' + Math.random().toString(16).substr(2, 64),
-            irysTransactionId: 'fallback_end_' + Date.now(),
-            sessionId: sessionId
-          };
-        }
-      };
-      
-      console.log('✅ Inline fallback integration created');
-    }
-  </script>
+  <script src="js/simple-blockchain-integration.js" onload="console.log('✅ SimpleBlockchainIntegration loaded:', typeof window.SimpleBlockchainIntegration !== 'undefined')"></script>
   
   <!-- Load main application -->
   <script type="module" src="main-new.js"></script>
