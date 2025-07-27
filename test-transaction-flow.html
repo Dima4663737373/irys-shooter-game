@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Transaction Flow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.loading { background: #fff3cd; color: #856404; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Transaction Flow</h1>
+    
+    <div class="test-section">
+        <h2>Current Implementation Status</h2>
+        <div id="implementation-status">
+            <div class="status loading">Checking implementation...</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Transaction Flow Test</h2>
+        <p>This test simulates the game start transaction flow to verify that the game only starts after blockchain confirmation.</p>
+        
+        <div id="transaction-status">
+            <div class="status">Ready to test</div>
+        </div>
+        
+        <button class="btn-primary" onclick="testTransactionFlow()">🚀 Test Transaction Flow</button>
+        <button class="btn-danger" onclick="resetTest()">🔄 Reset</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Expected Flow</h2>
+        <ol>
+            <li>User clicks "Start Game"</li>
+            <li>Modal shows "Loading Irys Network integration..."</li>
+            <li>Modal shows "Initializing Irys Network connection..."</li>
+            <li>Modal shows "Sending transaction to blockchain..."</li>
+            <li>Modal shows "⏳ Waiting for blockchain confirmation..."</li>
+            <li><strong>Transaction is sent and awaits confirmation</strong></li>
+            <li>Modal shows "✅ Transaction confirmed on blockchain!"</li>
+            <li><strong>Game starts ONLY after confirmation</strong></li>
+        </ol>
+    </div>
+
+    <script>
+        // Mock implementation to test the flow
+        window.mockIrysContractIntegration = {
+            async initialize(provider) {
+                console.log('🔄 Mock: Initializing Irys Contract Integration...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return true;
+            },
+            
+            async startGameSession(gameMode, walletAddress) {
+                console.log(`🔄 Mock: Starting ${gameMode} game session for ${walletAddress}`);
+                
+                // Simulate transaction sending
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                console.log('📤 Mock: Transaction sent to blockchain');
+                
+                // Simulate waiting for confirmation (this is the key part)
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                console.log('✅ Mock: Transaction confirmed on blockchain');
+                
+                return {
+                    success: true,
+                    smartContractTxHash: '0x' + Math.random().toString(16).substr(2, 64),
+                    irysTransactionId: 'irys_' + Math.random().toString(16).substr(2, 32),
+                    sessionId: 'session_' + Date.now(),
+                    gameData: {
+                        gameMode,
+                        playerAddress: walletAddress,
+                        timestamp: Date.now()
+                    }
+                };
+            }
+        };
+
+        function checkImplementationStatus() {
+            const statusDiv = document.getElementById('implementation-status');
+            let status = '';
+            
+            // Check if required integrations are available
+            if (typeof window.IrysContractIntegration !== 'undefined') {
+                status += '<div class="status success">✅ IrysContractIntegration is available</div>';
+            } else {
+                status += '<div class="status error">❌ IrysContractIntegration is NOT available</div>';
+            }
+            
+            if (typeof window.IrysNetworkIntegration !== 'undefined') {
+                status += '<div class="status error">⚠️ IrysNetworkIntegration is available (should use IrysContractIntegration instead)</div>';
+            }
+            
+            // Check GameManager
+            if (typeof window.GameManager !== 'undefined') {
+                status += '<div class="status success">✅ GameManager is available</div>';
+            } else {
+                status += '<div class="status error">❌ GameManager is NOT available</div>';
+            }
+            
+            statusDiv.innerHTML = status;
+        }
+
+        async function testTransactionFlow() {
+            const statusDiv = document.getElementById('transaction-status');
+            
+            try {
+                // Step 1: Loading integration
+                statusDiv.innerHTML = '<div class="status loading">🔄 Loading Irys Network integration...</div>';
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Step 2: Initializing connection
+                statusDiv.innerHTML = '<div class="status loading">🔄 Initializing Irys Network connection...</div>';
+                const initialized = await window.mockIrysContractIntegration.initialize(window.ethereum);
+                
+                if (!initialized) {
+                    throw new Error("Failed to initialize Irys Network connection");
+                }
+                
+                // Step 3: Sending transaction
+                statusDiv.innerHTML = '<div class="status loading">🔄 Sending transaction to blockchain...</div>';
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Step 4: Waiting for confirmation
+                statusDiv.innerHTML = '<div class="status loading">⏳ Waiting for blockchain confirmation...</div>';
+                
+                // Step 5: Start transaction (this will wait for confirmation)
+                const result = await window.mockIrysContractIntegration.startGameSession('endless', '0x1234567890123456789012345678901234567890');
+                
+                if (result.success) {
+                    // Step 6: Transaction confirmed
+                    statusDiv.innerHTML = '<div class="status success">✅ Transaction confirmed on blockchain!</div>';
+                    console.log('✅ Transaction confirmed on blockchain, starting game...');
+                    console.log('Smart Contract TX:', result.smartContractTxHash);
+                    console.log('Irys Transaction ID:', result.irysTransactionId);
+                    
+                    // Step 7: Start game after confirmation
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '<div class="status success">🎮 Game started successfully!</div>';
+                    }, 2000);
+                    
+                } else {
+                    throw new Error(result.error || 'Transaction failed');
+                }
+                
+            } catch (error) {
+                console.error('Transaction failed:', error);
+                statusDiv.innerHTML = `<div class="status error">❌ ${error.message}</div>`;
+            }
+        }
+
+        function resetTest() {
+            document.getElementById('transaction-status').innerHTML = '<div class="status">Ready to test</div>';
+        }
+
+        // Initialize
+        checkImplementationStatus();
+    </script>
+</body>
+</html>

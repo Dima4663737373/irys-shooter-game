@@ -93,26 +93,21 @@ export class GameManager {
       const walletInfo = this.walletManager.getWalletInfo();
       console.log('Connected wallet:', walletInfo.wallet);
       console.log('Wallet address:', walletInfo.address);
+      
+      // Check available integrations
+      console.log('Available integrations:');
+      console.log('- IrysContractIntegration:', typeof window.IrysContractIntegration !== 'undefined');
+      console.log('- SimpleBlockchainIntegration:', typeof window.SimpleBlockchainIntegration !== 'undefined');
   
       this.showTransactionModal(gameMode, async () => {
         const statusDiv = document.getElementById('transaction-status');
         
         try {
-          // Wait for Irys Network Integration to be available
-          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Loading Irys Network integration...</div>';
+          // Try different integrations with proper fallback
+          let integrationToUse = null;
+          let integrationName = '';
           
-          // Wait for the integration to be available (max 10 seconds)
-          let attempts = 0;
-          while (typeof window.IrysNetworkIntegration === 'undefined' && attempts < 50) {
-            await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms
-            attempts++;
-          }
-          
-          if (typeof window.IrysNetworkIntegration === 'undefined') {
-            throw new Error('Irys Network integration failed to load. Please refresh the page.');
-          }
-          
-          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing Irys Network connection...</div>';
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Loading blockchain integration...</div>';
           
           // Get the correct provider based on connected wallet
           let provider = window.ethereum;
@@ -120,26 +115,79 @@ export class GameManager {
             provider = window.okxwallet;
           }
           
-          const initialized = await window.IrysNetworkIntegration.initialize(provider);
-          if (!initialized) {
-            throw new Error("Failed to initialize Irys Network connection");
+          // Try Irys Contract Integration first
+          if (typeof window.IrysContractIntegration !== 'undefined') {
+            console.log('🔄 Trying Irys Contract Integration...');
+            statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing Irys Contract Integration...</div>';
+            
+            try {
+              const initialized = await window.IrysContractIntegration.initialize(provider);
+              if (initialized) {
+                integrationToUse = window.IrysContractIntegration;
+                integrationName = 'Irys Contract Integration';
+                console.log('✅ Irys Contract Integration initialized successfully');
+              } else {
+                throw new Error('Irys Contract Integration failed to initialize');
+              }
+            } catch (error) {
+              console.warn('⚠️ Irys Contract Integration failed:', error.message);
+              console.log('🔄 Falling back to Simple Blockchain Integration...');
+            }
           }
           
-          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Creating blockchain transaction on Irys Network...</div>';
+          // Fallback to Simple Blockchain Integration
+          if (!integrationToUse && typeof window.SimpleBlockchainIntegration !== 'undefined') {
+            console.log('🔄 Trying Simple Blockchain Integration...');
+            statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Switching to Irys Network...</div>';
+            
+            try {
+              const initialized = await window.SimpleBlockchainIntegration.initialize(provider);
+              if (initialized) {
+                integrationToUse = window.SimpleBlockchainIntegration;
+                integrationName = 'Irys Network Integration';
+                console.log('✅ Simple Blockchain Integration initialized successfully');
+              } else {
+                throw new Error('Simple Blockchain Integration failed to initialize');
+              }
+            } catch (error) {
+              console.error('❌ Simple Blockchain Integration failed:', error.message);
+            }
+          }
           
-          const result = await window.IrysNetworkIntegration.startGameSession(gameMode, walletInfo.address);
+          // Check if any integration is available
+          if (!integrationToUse) {
+            throw new Error('No blockchain integration available or all failed to initialize. Please refresh the page.');
+          }
+          
+          console.log(`✅ Using ${integrationName}`);
+          statusDiv.innerHTML = `<div style="color: #27ae60;">✅ Connected to Irys Network</div>`;
+          
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Sending transaction to blockchain...</div>';
+          
+          // Add a small delay to show the status update
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          statusDiv.innerHTML = '<div style="color: #f39c12;">⏳ Waiting for blockchain confirmation...</div>';
+          
+          // Start the transaction process
+          const result = await integrationToUse.startGameSession(gameMode, walletInfo.address);
   
           if (result.success) {
-            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction successful on Irys Network!</div>';
-            console.log('✅ Transaction successful on Irys Network, starting game...');
+            // Transaction was successfully confirmed in blockchain
+            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction confirmed on blockchain!</div>';
+            console.log('✅ Transaction confirmed on blockchain, starting game...');
+            console.log('Smart Contract TX:', result.smartContractTxHash);
+            console.log('Irys Transaction ID:', result.irysTransactionId);
             
+            // Store session info for later use
             window.currentGameSession = result.sessionId;
             
+            // Wait a moment to show success message, then start game
             setTimeout(() => {
               this.hideTransactionModal();
               gameInstance.gameMode = gameMode;
               gameInstance.init();
-            }, 1500);
+            }, 2000);
             
           } else {
             throw new Error(result.error || 'Transaction failed');
@@ -191,6 +239,7 @@ export class GameManager {
         <h3 style="margin: 0 0 16px 0; color: #00ffff; text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);">Start ${gameMode} Game on Irys Network</h3>
         <p style="margin: 0 0 24px 0; color: #888;">
           This will create a blockchain transaction on Irys Network to start your game session.
+          The game will start only after the transaction is confirmed on the blockchain.
           A small fee (~0.0001 IRYS) will be charged.
         </p>
         <div style="background: rgba(0, 255, 255, 0.1); padding: 12px; border-radius: 8px; margin: 16px 0;">

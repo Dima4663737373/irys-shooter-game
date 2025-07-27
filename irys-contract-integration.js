@@ -8,7 +8,7 @@ const IRYS_CONFIG = {
   token: "ethereum",
   
   // Smart contract configuration (deploy and update this)
-  contractAddress: "0x0000000000000000000000000000000000000000", // Update with deployed contract address
+  contractAddress: "0xeca153302d9D2e040a4E25F68352Cb001b9625f6", // Updated with deployed contract address
   
   // Contract ABI for IrysGameContract
   abi: [
@@ -120,6 +120,37 @@ const IRYS_CONFIG = {
         }
       ],
       "name": "GameScoreUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "player",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "newName",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "updateCount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "irysTransactionId",
+          "type": "string"
+        }
+      ],
+      "name": "PlayerNameUpdated",
       "type": "event"
     },
     {
@@ -319,6 +350,62 @@ const IRYS_CONFIG = {
       "name": "updateGameScore",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_name",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_irysTransactionId",
+          "type": "string"
+        }
+      ],
+      "name": "setPlayerName",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_player",
+          "type": "address"
+        }
+      ],
+      "name": "getPlayerName",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_player",
+          "type": "address"
+        }
+      ],
+      "name": "getPlayerNameUpdateCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     }
   ]
@@ -619,6 +706,91 @@ const IrysContractIntegration = {
     }
   },
   
+  // Set player name with Irys integration
+  async setPlayerName(playerName, walletAddress) {
+    try {
+      if (!this.contract || !this.irysInstance) {
+        throw new Error("Integration not initialized");
+      }
+      
+      console.log(`🔄 Setting player name: ${playerName}`);
+      
+      // Create name data for Irys
+      const nameData = {
+        playerName: playerName,
+        playerAddress: walletAddress,
+        timestamp: Date.now(),
+        action: "setPlayerName",
+        version: "2.0.0"
+      };
+      
+      // Upload name data to Irys first
+      console.log("🔄 Uploading name data to Irys...");
+      const irysResult = await this.uploadGameData(nameData);
+      
+      if (!irysResult.success) {
+        throw new Error("Failed to upload name data to Irys");
+      }
+      
+      // Set player name on smart contract with Irys transaction ID
+      console.log("🔄 Setting player name on smart contract...");
+      const tx = await this.contract.setPlayerName(
+        playerName,
+        irysResult.transactionId
+      );
+      
+      console.log("🔄 Smart contract transaction sent, waiting for confirmation...");
+      const receipt = await tx.wait();
+      
+      console.log("✅ Player name set successfully!");
+      console.log("Smart contract transaction hash:", receipt.transactionHash);
+      console.log("Irys transaction ID:", irysResult.transactionId);
+      
+      return {
+        success: true,
+        smartContractTxHash: receipt.transactionHash,
+        irysTransactionId: irysResult.transactionId
+      };
+      
+    } catch (error) {
+      console.error("❌ Failed to set player name:", error);
+      return {
+        success: false,
+        error: error.message || "Transaction failed"
+      };
+    }
+  },
+  
+  // Get player name from smart contract
+  async getPlayerName(playerAddress) {
+    try {
+      if (!this.contract) {
+        throw new Error("Smart contract not initialized");
+      }
+      
+      const playerName = await this.contract.getPlayerName(playerAddress);
+      return playerName;
+    } catch (error) {
+      console.error("❌ Failed to get player name:", error);
+      return "";
+    }
+  },
+  
+  // Get player name update count
+  async getPlayerNameUpdateCount(playerAddress) {
+    try {
+      if (!this.contract) {
+        throw new Error("Smart contract not initialized");
+      }
+      
+      const updateCount = await this.contract.getPlayerNameUpdateCount(playerAddress);
+      return updateCount.toNumber();
+    } catch (error) {
+      console.error("❌ Failed to get player name update count:", error);
+      return 0;
+    }
+  },
+
   // Get player stats from smart contract
   async getPlayerStats(playerAddress) {
     try {
@@ -667,8 +839,13 @@ const IrysContractIntegration = {
 
 // Export the integration object
 window.IrysContractIntegration = IrysContractIntegration;
+console.log("🔄 IrysContractIntegration exported to window:", typeof window.IrysContractIntegration);
 
 // Initialize when the script loads
 document.addEventListener('DOMContentLoaded', () => {
-  console.log("🔄 Irys Contract integration script loaded");
-}); 
+  console.log("🔄 Irys Contract integration script loaded and DOM ready");
+  console.log("🔍 IrysContractIntegration available:", typeof window.IrysContractIntegration !== 'undefined');
+});
+
+// Also log immediately when script executes
+console.log("📦 irys-contract-integration.js script executed");

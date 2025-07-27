@@ -913,19 +913,63 @@ export class BubbleShooterGame {
     }
   }
 
+  // Отримати кольори частинок на основі типу кульки (основний + відтінки)
+  getBubbleParticleColors(bubbleType) {
+    const colorMap = {
+      'blue': {
+        primary: '#4A90E2',    // Основний синій
+        variants: ['#5DADE2', '#3498DB', '#2E86C1'] // Відтінки синього
+      },
+      'red': {
+        primary: '#E74C3C',    // Основний червоний
+        variants: ['#EC7063', '#E55039', '#C0392B'] // Відтінки червоного
+      },
+      'yellow': {
+        primary: '#F1C40F',    // Основний жовтий
+        variants: ['#F4D03F', '#F7DC6F', '#D4AC0D'] // Відтінки жовтого
+      },
+      'kyan': {
+        primary: '#1ABC9C',    // Основний бірюзовий
+        variants: ['#48C9B0', '#17A2B8', '#138D75'] // Відтінки бірюзового
+      },
+      'heart': {
+        primary: '#E91E63',    // Основний рожевий
+        variants: ['#F06292', '#AD1457', '#C2185B'] // Відтінки рожевого
+      },
+      'stone': {
+        primary: '#7F8C8D',    // Основний сірий
+        variants: ['#95A5A6', '#BDC3C7', '#566573'] // Відтінки сірого
+      }
+    };
+    
+    const colors = colorMap[bubbleType] || {
+      primary: '#FFD700',
+      variants: ['#FFC107', '#FF9800', '#F57C00']
+    };
+    
+    return colors;
+  }
+
+  // Отримати випадковий колір частинки для типу кульки
+  getBubbleParticleColor(bubbleType) {
+    const colors = this.getBubbleParticleColors(bubbleType);
+    const allColors = [colors.primary, ...colors.variants];
+    return allColors[Math.floor(Math.random() * allColors.length)];
+  }
+
   createParticles(x, y, color, count = 10) {
     for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 * i) / count;
-      const speed = 2 + Math.random() * 2;
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5; // Додаємо випадковість до кута
+      const speed = 2 + Math.random() * 3; // Збільшуємо варіативність швидкості
       this.particles.push({
-        x,
-        y,
+        x: x + (Math.random() - 0.5) * 10, // Додаємо випадковість до початкової позиції
+        y: y + (Math.random() - 0.5) * 10,
         dx: Math.cos(angle) * speed,
         dy: Math.sin(angle) * speed,
         color,
-        size: 3 + Math.random() * 3,
-        life: 1,
-        decay: 0.02 + Math.random() * 0.02
+        size: 2 + Math.random() * 4, // Більша варіативність розміру
+        life: 0.8 + Math.random() * 0.4, // Варіативність тривалості життя
+        decay: 0.015 + Math.random() * 0.025 // Варіативність швидкості зникання
       });
     }
   }
@@ -1495,7 +1539,7 @@ export class BubbleShooterGame {
         console.log(`🚫 ПЛАВАЮЧІ КУЛІ НЕ ВИДАЛЯЮТЬСЯ: Залишаємо всі інші кулі на місці`);
 
         // Створюємо візуальні ефекти тільки для знищених куль одного кольору
-        this.createExplosionEffects(connectedGroup);
+        this.createExplosionEffects(connectedGroup, this.shootingBubble.type);
 
         this.consecutiveHits++;
         this.updateDifficulty();
@@ -1668,11 +1712,19 @@ export class BubbleShooterGame {
 
 
   // ПРОСТА ФУНКЦІЯ для візуальних ефектів
-  createExplosionEffects(positions) {
+  createExplosionEffects(positions, bubbleType) {
     // Створюємо частинки для кожної видаленої кулі
     positions.forEach(pos => {
       const { x, y } = this.gridToPixel(pos.row, pos.col);
-      this.createParticles(x, y, '#FFD700', 6);
+      
+      // Створюємо кілька хвиль частинок з різними кольорами
+      for (let wave = 0; wave < 2; wave++) {
+        setTimeout(() => {
+          const particleColor = this.getBubbleParticleColor(bubbleType);
+          const particleCount = wave === 0 ? 8 : 4; // Перша хвиля більша
+          this.createParticles(x, y, particleColor, particleCount);
+        }, wave * 100); // Затримка між хвилями
+      }
     });
   }
 

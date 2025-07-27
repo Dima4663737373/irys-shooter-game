@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Irys Network Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.loading { background: #fff3cd; color: #856404; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌐 Test Irys Network Connection</h1>
+    
+    <div class="test-section">
+        <h2>Network Information</h2>
+        <div id="network-info">
+            <div class="status loading">Checking network...</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Wallet Connection</h2>
+        <div id="wallet-status">
+            <div class="status">Not connected</div>
+        </div>
+        <button class="btn-primary" onclick="connectWallet()">Connect Wallet</button>
+        <button class="btn-success" onclick="addIrysNetwork()">Add Irys Network</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Integration Test</h2>
+        <div id="integration-status">
+            <div class="status">Ready to test</div>
+        </div>
+        <button class="btn-primary" onclick="testIntegration()">Test Integration</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Expected Irys Network Configuration</h2>
+        <pre id="expected-config">
+Chain ID: 1270 (0x4F6)
+Chain Name: Irys Testnet
+RPC URL: https://testnet-rpc.irys.xyz/v1/execution-rpc
+Block Explorer: https://testnet-explorer.irys.xyz/
+Native Currency: IRYS
+Contract Address: 0xeca153302d9D2e040a4E25F68352Cb001b9625f6
+        </pre>
+    </div>
+
+    <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="js/simple-blockchain-integration.js"></script>
+    
+    <script>
+        let currentProvider = null;
+        let currentAccount = null;
+
+        async function checkCurrentNetwork() {
+            const infoDiv = document.getElementById('network-info');
+            
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const provider = new ethers.providers.Web3Provider(window.ethereum);
+                    const network = await provider.getNetwork();
+                    
+                    let networkStatus = '';
+                    if (network.chainId === 1270) {
+                        networkStatus = `<div class="status success">✅ Connected to Irys Network (${network.chainId})</div>`;
+                    } else {
+                        networkStatus = `<div class="status error">❌ Wrong network: ${network.name || 'Unknown'} (${network.chainId})</div>`;
+                        networkStatus += `<div class="status">Expected: Irys Testnet (1270)</div>`;
+                    }
+                    
+                    infoDiv.innerHTML = networkStatus;
+                } catch (error) {
+                    infoDiv.innerHTML = `<div class="status error">❌ Error checking network: ${error.message}</div>`;
+                }
+            } else {
+                infoDiv.innerHTML = '<div class="status error">❌ No Ethereum provider found</div>';
+            }
+        }
+
+        async function connectWallet() {
+            const statusDiv = document.getElementById('wallet-status');
+            
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    throw new Error('No Ethereum provider found');
+                }
+                
+                statusDiv.innerHTML = '<div class="status loading">🔄 Connecting wallet...</div>';
+                
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                if (accounts.length > 0) {
+                    currentAccount = accounts[0];
+                    currentProvider = window.ethereum;
+                    
+                    statusDiv.innerHTML = `<div class="status success">✅ Connected: ${currentAccount}</div>`;
+                    
+                    // Check network after connecting
+                    await checkCurrentNetwork();
+                } else {
+                    throw new Error('No accounts found');
+                }
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ ${error.message}</div>`;
+            }
+        }
+
+        async function addIrysNetwork() {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: '0x4F6', // 1270 in hex
+                        chainName: 'Irys Testnet',
+                        nativeCurrency: {
+                            name: 'IRYS',
+                            symbol: 'IRYS',
+                            decimals: 18
+                        },
+                        rpcUrls: ['https://testnet-rpc.irys.xyz/v1/execution-rpc'],
+                        blockExplorerUrls: ['https://testnet-explorer.irys.xyz/']
+                    }]
+                });
+                
+                alert('✅ Irys Network added successfully!');
+                await checkCurrentNetwork();
+            } catch (error) {
+                alert(`❌ Error adding network: ${error.message}`);
+            }
+        }
+
+        async function testIntegration() {
+            const statusDiv = document.getElementById('integration-status');
+            
+            try {
+                if (!currentProvider || !currentAccount) {
+                    throw new Error('Please connect wallet first');
+                }
+                
+                statusDiv.innerHTML = '<div class="status loading">🔄 Testing integration...</div>';
+                
+                // Test SimpleBlockchainIntegration
+                if (typeof window.SimpleBlockchainIntegration !== 'undefined') {
+                    statusDiv.innerHTML = '<div class="status loading">🔄 Initializing Irys Network Integration...</div>';
+                    
+                    const initialized = await window.SimpleBlockchainIntegration.initialize(currentProvider);
+                    
+                    if (initialized) {
+                        statusDiv.innerHTML = '<div class="status success">✅ Irys Network Integration initialized successfully!</div>';
+                        
+                        // Test transaction (mock)
+                        statusDiv.innerHTML = '<div class="status loading">🔄 Testing transaction flow...</div>';
+                        
+                        const result = await window.SimpleBlockchainIntegration.startGameSession('endless', currentAccount);
+                        
+                        if (result.success) {
+                            statusDiv.innerHTML = `
+                                <div class="status success">✅ Transaction successful!</div>
+                                <div style="margin-top: 10px;">
+                                    <strong>Session ID:</strong> ${result.sessionId}<br>
+                                    <strong>TX Hash:</strong> ${result.smartContractTxHash}<br>
+                                    <strong>Mock Irys ID:</strong> ${result.irysTransactionId}
+                                </div>
+                            `;
+                        } else {
+                            throw new Error(result.error || 'Transaction failed');
+                        }
+                    } else {
+                        throw new Error('Failed to initialize integration');
+                    }
+                } else {
+                    throw new Error('SimpleBlockchainIntegration not available');
+                }
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ ${error.message}</div>`;
+            }
+        }
+
+        // Initialize
+        checkCurrentNetwork();
+        
+        // Listen for network changes
+        if (typeof window.ethereum !== 'undefined') {
+            window.ethereum.on('chainChanged', () => {
+                setTimeout(checkCurrentNetwork, 1000);
+            });
+            
+            window.ethereum.on('accountsChanged', (accounts) => {
+                if (accounts.length > 0) {
+                    currentAccount = accounts[0];
+                    document.getElementById('wallet-status').innerHTML = 
+                        `<div class="status success">✅ Connected: ${currentAccount}</div>`;
+                } else {
+                    currentAccount = null;
+                    document.getElementById('wallet-status').innerHTML = 
+                        '<div class="status">Not connected</div>';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

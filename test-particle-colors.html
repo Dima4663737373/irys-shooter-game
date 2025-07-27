@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Particle Colors</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #2c3e50;
+            color: white;
+        }
+        .test-section {
+            background: #34495e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .color-demo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .bubble-type {
+            text-align: center;
+            padding: 15px;
+            background: #2c3e50;
+            border-radius: 8px;
+            min-width: 120px;
+        }
+        .color-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin: 5px auto;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .particle-demo {
+            width: 100%;
+            height: 400px;
+            background: #1a252f;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            background: #3498db;
+            color: white;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Test Particle Colors for Bubble Types</h1>
+    
+    <div class="test-section">
+        <h2>Bubble Type Color Mapping</h2>
+        <div class="color-demo" id="color-demo">
+            <!-- Colors will be generated here -->
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Particle Animation Demo</h2>
+        <div class="controls">
+            <button onclick="testParticles('blue')">💙 Blue Explosion</button>
+            <button onclick="testParticles('red')">❤️ Red Explosion</button>
+            <button onclick="testParticles('yellow')">💛 Yellow Explosion</button>
+            <button onclick="testParticles('kyan')">💚 Cyan Explosion</button>
+            <button onclick="testParticles('heart')">💖 Heart Explosion</button>
+            <button onclick="testParticles('stone')">🗿 Stone Explosion</button>
+            <button onclick="clearParticles()">🧹 Clear</button>
+        </div>
+        <canvas id="particle-canvas" class="particle-demo" width="960" height="400"></canvas>
+    </div>
+
+    <div class="test-section">
+        <h2>Expected Behavior</h2>
+        <ul>
+            <li><strong>Blue bubbles</strong> → Blue particles with light blue variants</li>
+            <li><strong>Red bubbles</strong> → Red particles with pink/crimson variants</li>
+            <li><strong>Yellow bubbles</strong> → Yellow particles with gold variants</li>
+            <li><strong>Cyan bubbles</strong> → Cyan particles with teal variants</li>
+            <li><strong>Heart bubbles</strong> → Pink particles with magenta variants</li>
+            <li><strong>Stone bubbles</strong> → Gray particles with silver variants</li>
+        </ul>
+    </div>
+
+    <script>
+        // Bubble particle color system (copied from game)
+        function getBubbleParticleColors(bubbleType) {
+            const colorMap = {
+                'blue': {
+                    primary: '#4A90E2',
+                    variants: ['#5DADE2', '#3498DB', '#2E86C1']
+                },
+                'red': {
+                    primary: '#E74C3C',
+                    variants: ['#EC7063', '#E55039', '#C0392B']
+                },
+                'yellow': {
+                    primary: '#F1C40F',
+                    variants: ['#F4D03F', '#F7DC6F', '#D4AC0D']
+                },
+                'kyan': {
+                    primary: '#1ABC9C',
+                    variants: ['#48C9B0', '#17A2B8', '#138D75']
+                },
+                'heart': {
+                    primary: '#E91E63',
+                    variants: ['#F06292', '#AD1457', '#C2185B']
+                },
+                'stone': {
+                    primary: '#7F8C8D',
+                    variants: ['#95A5A6', '#BDC3C7', '#566573']
+                }
+            };
+            
+            return colorMap[bubbleType] || {
+                primary: '#FFD700',
+                variants: ['#FFC107', '#FF9800', '#F57C00']
+            };
+        }
+
+        function getBubbleParticleColor(bubbleType) {
+            const colors = getBubbleParticleColors(bubbleType);
+            const allColors = [colors.primary, ...colors.variants];
+            return allColors[Math.floor(Math.random() * allColors.length)];
+        }
+
+        // Generate color demo
+        function generateColorDemo() {
+            const demoDiv = document.getElementById('color-demo');
+            const bubbleTypes = ['blue', 'red', 'yellow', 'kyan', 'heart', 'stone'];
+            
+            bubbleTypes.forEach(type => {
+                const colors = getBubbleParticleColors(type);
+                const allColors = [colors.primary, ...colors.variants];
+                
+                const typeDiv = document.createElement('div');
+                typeDiv.className = 'bubble-type';
+                
+                let html = `<h3>${type.charAt(0).toUpperCase() + type.slice(1)}</h3>`;
+                
+                allColors.forEach(color => {
+                    html += `<div class="color-circle" style="background-color: ${color};" title="${color}"></div>`;
+                });
+                
+                typeDiv.innerHTML = html;
+                demoDiv.appendChild(typeDiv);
+            });
+        }
+
+        // Particle system for demo
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function createParticles(x, y, bubbleType, count = 12) {
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+                const speed = 2 + Math.random() * 3;
+                const color = getBubbleParticleColor(bubbleType);
+                
+                particles.push({
+                    x: x + (Math.random() - 0.5) * 10,
+                    y: y + (Math.random() - 0.5) * 10,
+                    dx: Math.cos(angle) * speed,
+                    dy: Math.sin(angle) * speed,
+                    color,
+                    size: 2 + Math.random() * 4,
+                    life: 0.8 + Math.random() * 0.4,
+                    decay: 0.015 + Math.random() * 0.025
+                });
+            }
+        }
+
+        function updateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles = particles.filter(p => {
+                p.x += p.dx;
+                p.y += p.dy;
+                p.life -= p.decay;
+                
+                if (p.life > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = p.life;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                    ctx.restore();
+                    return true;
+                }
+                return false;
+            });
+            
+            requestAnimationFrame(updateParticles);
+        }
+
+        function testParticles(bubbleType) {
+            const x = canvas.width / 2;
+            const y = canvas.height / 2;
+            
+            // Create multiple waves of particles
+            for (let wave = 0; wave < 2; wave++) {
+                setTimeout(() => {
+                    const particleCount = wave === 0 ? 8 : 4;
+                    createParticles(x, y, bubbleType, particleCount);
+                }, wave * 100);
+            }
+        }
+
+        function clearParticles() {
+            particles = [];
+        }
+
+        // Initialize
+        generateColorDemo();
+        updateParticles();
+
+        // Add click handler for canvas
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const bubbleTypes = ['blue', 'red', 'yellow', 'kyan', 'heart', 'stone'];
+            const randomType = bubbleTypes[Math.floor(Math.random() * bubbleTypes.length)];
+            
+            testParticles(randomType);
+        });
+    </script>
+</body>
+</html>

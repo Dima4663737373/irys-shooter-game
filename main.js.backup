@@ -597,7 +597,7 @@ function showSettings() {
         <label for="player-name" style="font-size:1.1rem; color:#185a9d;">Player Name:</label><br>
         <input type="text" id="player-name" name="player-name" value="${savedName}" maxlength="16" placeholder="Enter your name" style="margin:18px 0 12px 0; padding:14px; border-radius:12px; border:1.5px solid #43cea2; width:220px; font-size:1.1rem; background:#f7fafc; box-shadow:0 2px 8px rgba(67,206,162,0.07); transition:border 0.3s ease-in-out;" required><br>
         <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
-          <button type="submit" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);">Save</button>
+          <button type="submit" style="width:180px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);">Save to Blockchain</button>
           <button id="back-menu" type="button" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Back</button>
         </div>
       </form>
@@ -614,14 +614,119 @@ function showSettings() {
       document.getElementById('settings-msg').textContent = 'Please enter your name.';
       return;
     }
-    localStorage.setItem('playerName', name);
-    document.getElementById('settings-msg').textContent = 'Name saved!';
+    
+    // Check if wallet is connected
+    if (!walletAddress) {
+      document.getElementById('settings-msg').innerHTML = '<div style="color: #e74c3c;">Please connect your wallet first!</div>';
+      return;
+    }
+    
+    // Save name to blockchain with transaction modal
+    savePlayerNameToBlockchain(name);
   };
+}
+
+// Function to save player name to blockchain
+async function savePlayerNameToBlockchain(playerName) {
+  try {
+    console.log(`🏷️ Saving player name to blockchain: ${playerName}`);
+    console.log('🔍 Checking IrysContractIntegration availability:', typeof window.IrysContractIntegration);
+    console.log('🔍 Window object keys:', Object.keys(window).filter(key => key.includes('Irys')));
+    
+    // Check if wallet is connected
+    if (!walletAddress) {
+      const statusDiv = document.getElementById('settings-msg');
+      if (statusDiv) {
+        statusDiv.innerHTML = '<div style="color: #e74c3c;">Please connect your wallet first!</div>';
+      }
+      return;
+    }
+    
+    // Show transaction modal similar to game start
+    showTransactionModal('Save Name', async () => {
+      const statusDiv = document.getElementById('transaction-status');
+      
+      try {
+        // Use Irys Contract integration
+        if (typeof window.IrysContractIntegration !== 'undefined') {
+          console.log('✅ IrysContractIntegration is available, proceeding with blockchain transaction...');
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing Irys Network + Smart Contract...</div>';
+          
+          // Get the correct provider based on connected wallet
+          let provider = window.ethereum;
+          if (connectedWallet === 'OKX Wallet' && window.okxwallet) {
+            provider = window.okxwallet;
+          }
+          
+          // Initialize Irys Contract integration
+          const initialized = await window.IrysContractIntegration.initialize(provider);
+          if (!initialized) {
+            throw new Error("Failed to initialize Irys Network + Smart Contract");
+          }
+          
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Creating Irys Network transaction for name...</div>';
+          
+          // Use the correct method for setting player name
+          const result = await window.IrysContractIntegration.setPlayerName(playerName, walletAddress);
+          
+          if (result.success) {
+            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Name saved to blockchain successfully!</div>';
+            
+            // Save to localStorage as well
+            localStorage.setItem('playerName', playerName);
+            
+            // Close modal after success
+            setTimeout(() => {
+              closeTransactionModal();
+              // Update settings message
+              const settingsMsg = document.getElementById('settings-msg');
+              if (settingsMsg) {
+                settingsMsg.innerHTML = '<div style="color: #27ae60;">✅ Name saved to blockchain!</div>';
+              }
+            }, 2000);
+            
+          } else {
+            throw new Error(result.error || 'Failed to save name to blockchain');
+          }
+        } else {
+          // Fallback to local storage only
+          console.log('❌ IrysContractIntegration is not available, falling back to local storage');
+          console.log('🔍 Available window properties:', Object.keys(window).filter(key => key.toLowerCase().includes('irys')));
+          localStorage.setItem('playerName', playerName);
+          statusDiv.innerHTML = '<div style="color: #e67e22;">⚠️ Blockchain not available, saved locally only</div>';
+          
+          setTimeout(() => {
+            closeTransactionModal();
+            const settingsMsg = document.getElementById('settings-msg');
+            if (settingsMsg) {
+              settingsMsg.innerHTML = '<div style="color: #e67e22;">⚠️ Saved locally only</div>';
+            }
+          }, 2000);
+        }
+        
+      } catch (error) {
+        console.error('❌ Failed to save player name:', error);
+        statusDiv.innerHTML = `<div style="color: #e74c3c;">❌ Failed to save name: ${error.message}</div>`;
+        
+        setTimeout(() => {
+          closeTransactionModal();
+        }, 3000);
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to save player name:', error);
+    const statusDiv = document.getElementById('settings-msg');
+    if (statusDiv) {
+      statusDiv.innerHTML = `<div style="color: #e74c3c;">❌ Failed to save name: ${error.message}</div>`;
+    }
+  }
 }
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', function () {
   console.log('🎯 DOM loaded, initializing app...');
+  console.log('🔍 IrysContractIntegration available at DOM load:', typeof window.IrysContractIntegration);
   setGlobalBackground();
   checkSavedWalletConnection();
 
@@ -670,29 +775,154 @@ async function startGameWithTransaction(gameMode, gameInstance) {
             console.warn("⚠️ Could not check Irys balance:", balanceError.message);
           }
           
-          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Creating Irys Network transaction...</div>';
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Sending transaction to blockchain...</div>';
           
-          const result = await window.IrysNetworkIntegration.startGameSession(gameMode, walletAddress);
+          // Add a small delay to show the status update
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          statusDiv.innerHTML = '<div style="color: #f39c12;">⏳ Waiting for blockchain confirmation...</div>';
+          
+          const result = await window.IrysContractIntegration.startGameSession(gameMode, walletAddress);
 
           if (result.success) {
-            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction signed! Starting game...</div>';
-            console.log('✅ Irys Network transaction successful, starting game...');
+            // Transaction was successfully confirmed in blockchain
+            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction confirmed on blockchain!</div>';
+            console.log('✅ Transaction confirmed on blockchain, starting game...');
             console.log('Smart Contract TX:', result.smartContractTxHash);
-            console.log('Irys Network TX:', result.irysTransactionId);
+            console.log('Irys Transaction ID:', result.irysTransactionId);
             
             // Store session ID and transaction info for later use
             window.currentGameSession = result.sessionId;
             window.currentIrysTransactionId = result.irysTransactionId;
             window.currentSmartContractTxHash = result.smartContractTxHash;
             
-            // Immediately start the game
+            // Start game after successful blockchain confirmation
+            setTimeout(() => {
+              hideTransactionModal();
+              gameInstance.gameMode = gameMode;
+              gameInstance.init();
+            }, 2000);
+            
+          } else {
+            throw new Error(result.error || 'Irys Network transaction failed');
+          }
+        } else if (typeof window.SimpleTestIntegration !== 'undefined') {
+          // Fallback to Simple Test integration
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing blockchain connection...</div>';
+          
+          let provider = window.ethereum;
+          if (connectedWallet === 'OKX Wallet' && window.okxwallet) {
+            provider = window.okxwallet;
+          }
+          
+          const initialized = await window.SimpleTestIntegration.initialize(provider);
+          if (!initialized) {
+            throw new Error("Failed to initialize blockchain connection");
+          }
+          
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Sending transaction to blockchain...</div>';
+          
+          // Add a small delay to show the status update
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          statusDiv.innerHTML = '<div style="color: #f39c12;">⏳ Waiting for blockchain confirmation...</div>';
+          
+          const result = await window.IrysContractIntegration.startGameSession(gameMode, walletAddress);
+
+          if (result.success) {
+            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction confirmed on blockchain!</div>';
+            console.log('✅ Transaction confirmed on blockchain, starting game...');
+            console.log('Smart Contract TX:', result.smartContractTxHash);
+            console.log('Irys Transaction ID:', result.irysTransactionId);
+            
+            window.currentGameSession = result.sessionId;
+            
+            setTimeout(() => {
+              hideTransactionModal();
+              gameInstance.gameMode = gameMode;
+              gameInstance.init();
+            }, 2000);
+            
+          } else {
+            throw new Error(result.error || 'Transaction failed');
+          }
+        } else {
+          console.warn('⚠️ No blockchain integration available, starting game without transaction');
+          statusDiv.innerHTML = '<div style="color: #e67e22;">⚠️ Blockchain not available, starting without transaction...</div>';
+          
+          setTimeout(() => {
             hideTransactionModal();
             gameInstance.gameMode = gameMode;
             gameInstance.init();
-            
-            // Show in-game notification about transaction status
+          }, 2000);
+        }
+        
+      } catch (error) {
+        console.error('Transaction failed:', error);
+        statusDiv.innerHTML = `<div style="color: #e74c3c;">❌ ${error.message}</div>`;
+        
+        setTimeout(() => {
+          hideTransactionModal();
+        }, 3000);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Failed to start game with transaction:', error);
+    alert('Failed to start game. Please try again.');
+  }
+}        // This should not happen since IrysContractIntegration.startGameSession 
+            // already waits for confirmation, but keeping as fallback
             if (result.pending) {
-              showNotification(`Transaction pending: ${result.transactionHash.substring(0, 10)}...`, 'info');
+              statusDiv.innerHTML = '<div style="color: #f39c12;">⏳ Waiting for transaction confirmation...</div>';
+              
+              // Wait for transaction confirmation before starting game
+              const checkConfirmation = async () => {
+                try {
+                  // Check transaction status periodically
+                  const txStatus = await window.SimpleTestIntegration.checkTransactionStatus(result.smartContractTxHash);
+                  
+                  if (txStatus.confirmed) {
+                    statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction confirmed! Starting game...</div>';
+                    setTimeout(() => {
+                      hideTransactionModal();
+                      gameInstance.gameMode = gameMode;
+                      gameInstance.init();
+                    }, 1000);
+                  } else {
+                    // Check again in 3 seconds
+                    setTimeout(checkConfirmation, 3000);
+                  }
+                } catch (error) {
+                  console.error('Error checking transaction status:', error);
+                  // Start game anyway after timeout
+                  setTimeout(() => {
+                    statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Starting game...</div>';
+                    hideTransactionModal();
+                    gameInstance.gameMode = gameMode;
+                    gameInstance.init();
+                  }, 2000);
+                }
+              };
+              
+              checkConfirmation();
+            } else {
+              // Transaction confirmed on blockchain
+              statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction confirmed on blockchain!</div>';
+              console.log('✅ Transaction confirmed on blockchain, starting game...');
+              console.log('Smart Contract TX:', result.smartContractTxHash);
+              console.log('Irys Transaction ID:', result.irysTransactionId);
+              
+              // Store session info for later use
+              window.currentGameSession = result.sessionId;
+              window.currentIrysTransactionId = result.irysTransactionId;
+              window.currentSmartContractTxHash = result.smartContractTxHash;
+              
+              setTimeout(() => {
+                hideTransactionModal();
+                gameInstance.gameMode = gameMode;
+                gameInstance.init();
+              }, 2000);
             }
             
           } else {
@@ -712,21 +942,31 @@ async function startGameWithTransaction(gameMode, gameInstance) {
             throw new Error("Failed to initialize blockchain connection");
           }
           
-          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Creating blockchain transaction...</div>';
+          statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Sending transaction to blockchain...</div>';
           
-          const result = await window.IrysNetworkIntegration.startGameSession(gameMode, walletAddress);
+          // Add a small delay to show the status update
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          statusDiv.innerHTML = '<div style="color: #f39c12;">⏳ Waiting for blockchain confirmation...</div>';
+          
+          const result = await window.IrysContractIntegration.startGameSession(gameMode, walletAddress);
 
           if (result.success) {
-            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction successful!</div>';
-            console.log('✅ Transaction successful, starting game...');
+            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction confirmed on blockchain!</div>';
+            console.log('✅ Transaction confirmed on blockchain, starting game...');
+            console.log('Smart Contract TX:', result.smartContractTxHash);
+            console.log('Irys Transaction ID:', result.irysTransactionId);
             
+            // Store session info for later use
             window.currentGameSession = result.sessionId;
+            window.currentIrysTransactionId = result.irysTransactionId;
+            window.currentSmartContractTxHash = result.smartContractTxHash;
             
             setTimeout(() => {
               hideTransactionModal();
               gameInstance.gameMode = gameMode;
               gameInstance.init();
-            }, 1500);
+            }, 2000);
             
           } else {
             throw new Error(result.error || 'Transaction failed');
@@ -880,4 +1120,9 @@ function hideTransactionModal() {
       }
     }, 300);
   }
+}
+
+// Function to close transaction modal (alias for hideTransactionModal)
+function closeTransactionModal() {
+  hideTransactionModal();
 }

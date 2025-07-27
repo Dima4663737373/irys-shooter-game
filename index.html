@@ -20,16 +20,13 @@
     onload="console.log('✅ ethers.js loaded successfully:', typeof ethers !== 'undefined' ? ethers.version : 'FAILED')"
   ></script>
   
-  <!-- Load blockchain integration scripts from public folder -->
-  <script src="/js/irys-blockchain-integration.js" onload="console.log('✅ Irys Network integration loaded')"></script>
-  <script src="/js/contract-integration.js"></script>
-  <script src="/js/irys-integration.js"></script>
+  <!-- Load Irys Contract Integration -->
+  <script src="irys-contract-integration.js" onload="console.log('✅ IrysContractIntegration loaded:', typeof window.IrysContractIntegration !== 'undefined')"></script>
   
-  <!-- Load main application scripts -->
-  <script type="module" src="main.js"></script>
+  <!-- Load Irys Network Integration as fallback -->
+  <script src="js/simple-blockchain-integration.js" onload="console.log('✅ SimpleBlockchainIntegration loaded:', typeof window.SimpleBlockchainIntegration !== 'undefined')"></script>
+  
+  <!-- Load main application -->
   <script type="module" src="main-new.js"></script>
-  
-  <!-- Load additional scripts -->
-  <script src="/js/example-usage.js"></script>
 </body>
 </html>

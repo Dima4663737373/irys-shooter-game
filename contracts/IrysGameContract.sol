@@ -42,12 +42,23 @@ contract IrysGameContract {
         uint256 timestamp
     );
     
+    event PlayerNameUpdated(
+        address indexed player,
+        string newName,
+        uint256 updateCount,
+        string irysTransactionId
+    );
+    
     // State variables
     mapping(string => GameSession) public gameSessions;
     mapping(address => string[]) public playerSessions;
     mapping(address => uint256) public playerHighScores;
     mapping(address => uint256) public playerTotalGames;
     mapping(address => uint256) public playerTotalScore;
+    
+    // Player names storage
+    mapping(address => string) private playerNames;
+    mapping(address => uint256) private playerNameUpdateCount;
     
     address public owner;
     uint256 public gameSessionFee = 0.0001 ether; // 0.0001 ETH fee
@@ -172,6 +183,38 @@ contract IrysGameContract {
         session.score = _score;
         
         emit GameScoreUpdated(msg.sender, _sessionId, _score, block.timestamp);
+    }
+    
+    /**
+     * @dev Set player name with Irys transaction ID
+     * @param _name Player name
+     * @param _irysTransactionId Irys transaction ID for this update
+     */
+    function setPlayerName(string memory _name, string memory _irysTransactionId) external {
+        require(bytes(_name).length > 0, "Name cannot be empty");
+        require(bytes(_name).length <= 32, "Name too long");
+        require(bytes(_irysTransactionId).length > 0, "Irys transaction ID cannot be empty");
+        
+        playerNames[msg.sender] = _name;
+        playerNameUpdateCount[msg.sender]++;
+        
+        emit PlayerNameUpdated(msg.sender, _name, playerNameUpdateCount[msg.sender], _irysTransactionId);
+    }
+    
+    /**
+     * @dev Get player name
+     * @param _player Player address
+     */
+    function getPlayerName(address _player) external view returns (string memory) {
+        return playerNames[_player];
+    }
+    
+    /**
+     * @dev Get player name update count
+     * @param _player Player address
+     */
+    function getPlayerNameUpdateCount(address _player) external view returns (uint256) {
+        return playerNameUpdateCount[_player];
     }
     
     /**
@@ -311,4 +354,4 @@ contract IrysGameContract {
         // For now, just emit an event
         emit GameSessionEnded(address(0), "EMERGENCY_PAUSE", 0, block.timestamp, "");
     }
-} 
+}
