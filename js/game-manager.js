@@ -167,26 +167,40 @@ export class GameManager {
           // Add a small delay to show the status update
           await new Promise(resolve => setTimeout(resolve, 500));
           
-          statusDiv.innerHTML = '<div style="color: #f39c12;">⏳ Waiting for blockchain confirmation...</div>';
+          statusDiv.innerHTML = '<div style="color: #f39c12;">⏳ Sending transaction to Irys blockchain...</div>';
           
           // Start the transaction process
           const result = await integrationToUse.startGameSession(gameMode, walletInfo.address);
   
           if (result.success) {
-            // Transaction was successfully confirmed in blockchain
-            statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Transaction confirmed on blockchain!</div>';
-            console.log('✅ Transaction confirmed on blockchain, starting game...');
+            // Transaction was successfully confirmed in Irys blockchain with multiple confirmations
+            statusDiv.innerHTML = `<div style="color: #27ae60;">✅ Transaction confirmed on Irys Network!<br/>
+              <small>Block: ${result.blockNumber || 'N/A'}<br/>
+              Confirmations: ${result.confirmations || 1}<br/>
+              Gas Used: ${result.gasUsed || 'N/A'}<br/>
+              TX Hash: ${result.smartContractTxHash ? result.smartContractTxHash.substring(0, 10) + '...' : 'N/A'}</small>
+            </div>`;
+            
+            console.log('✅ Transaction confirmed on Irys Network with multiple confirmations!');
             console.log('Smart Contract TX:', result.smartContractTxHash);
+            console.log('Block Number:', result.blockNumber);
+            console.log('Confirmations:', result.confirmations);
+            console.log('Gas Used:', result.gasUsed);
             console.log('Irys Transaction ID:', result.irysTransactionId);
+            console.log('Session ID:', result.sessionId);
             
             // Store session info for later use
             window.currentGameSession = result.sessionId;
             
-            // Wait a moment to show success message, then start game
+            // Show success message for a bit longer, then start game
             setTimeout(() => {
-              this.hideTransactionModal();
-              gameInstance.gameMode = gameMode;
-              gameInstance.init();
+              statusDiv.innerHTML = '<div style="color: #27ae60;">🎮 Starting game...</div>';
+              
+              setTimeout(() => {
+                this.hideTransactionModal();
+                gameInstance.gameMode = gameMode;
+                gameInstance.init();
+              }, 1000);
             }, 2000);
             
           } else {

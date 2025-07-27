@@ -32,13 +32,23 @@ contract IrysShooterGame {
         uint256 timestamp
     );
     
+    event PlayerNameSet(
+        address indexed player,
+        string newName,
+        string oldName,
+        uint256 timestamp
+    );
+    
     // State variables
     mapping(string => GameSession) public gameSessions;
     mapping(address => string[]) public playerSessions;
     mapping(address => uint256) public playerHighScores;
+    mapping(address => string) public playerNames; // New: Store player names
+    mapping(string => address) public nameToAddress; // New: Prevent duplicate names
     
     address public owner;
     uint256 public gameSessionFee = 0.00000001 ether; // Very small fee
+    uint256 public nameChangeFee = 0.00000001 ether; // Fee for changing name
     uint256 public totalSessions;
     
     // Modifiers
@@ -186,6 +196,65 @@ contract IrysShooterGame {
     }
     
     /**
+     * @dev Set or update player name
+     * @param _name New player name (must be unique and non-empty)
+     */
+    function setPlayerName(string memory _name) external payable {
+        require(msg.value >= nameChangeFee, "Insufficient fee for name change");
+        require(bytes(_name).length > 0, "Name cannot be empty");
+        require(bytes(_name).length <= 32, "Name too long (max 32 characters)");
+        
+        // Check if name is already taken by another player
+        address existingOwner = nameToAddress[_name];
+        require(existingOwner == address(0) || existingOwner == msg.sender, "Name already taken");
+        
+        string memory oldName = playerNames[msg.sender];
+        
+        // If player had a previous name, free it up
+        if (bytes(oldName).length > 0) {
+            delete nameToAddress[oldName];
+        }
+        
+        // Set new name
+        playerNames[msg.sender] = _name;
+        nameToAddress[_name] = msg.sender;
+        
+        emit PlayerNameSet(msg.sender, _name, oldName, block.timestamp);
+    }
+    
+    /**
+     * @dev Get player name by address
+     * @param _player Player address
+     */
+    function getPlayerName(address _player) external view returns (string memory) {
+        return playerNames[_player];
+    }
+    
+    /**
+     * @dev Get player address by name
+     * @param _name Player name
+     */
+    function getPlayerAddress(string memory _name) external view returns (address) {
+        return nameToAddress[_name];
+    }
+    
+    /**
+     * @dev Check if name is available
+     * @param _name Name to check
+     */
+    function isNameAvailable(string memory _name) external view returns (bool) {
+        return nameToAddress[_name] == address(0);
+    }
+    
+    /**
+     * @dev Update name change fee (owner only)
+     * @param _newFee New fee amount
+     */
+    function updateNameChangeFee(uint256 _newFee) external onlyOwner {
+        nameChangeFee = _newFee;
+    }
+    
+    /**
      * @dev Get contract stats
      */
     function getContractStats() 
@@ -194,9 +263,10 @@ contract IrysShooterGame {
         returns (
             uint256 _totalSessions,
             uint256 _contractBalance,
-            uint256 _gameSessionFee
+            uint256 _gameSessionFee,
+            uint256 _nameChangeFee
         ) 
     {
-        return (totalSessions, address(this).balance, gameSessionFee);
+        return (totalSessions, address(this).balance, gameSessionFee, nameChangeFee);
     }
 }

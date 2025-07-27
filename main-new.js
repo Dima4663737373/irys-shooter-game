@@ -215,8 +215,9 @@ function showSettings() {
       <form id="settings-form">
         <label for="player-name" style="font-size:1.1rem; color:#185a9d;">Player Name:</label><br>
         <input type="text" id="player-name" name="player-name" value="${savedName}" maxlength="16" placeholder="Enter your name" style="margin:18px 0 12px 0; padding:14px; border-radius:12px; border:1.5px solid #43cea2; width:220px; font-size:1.1rem; background:#f7fafc; box-shadow:0 2px 8px rgba(67,206,162,0.07); transition:border 0.3s ease-in-out;" required><br>
+        ${savedName ? `<div style="font-size:0.9rem; color:#666; margin-bottom:12px;">Current: "${savedName}" - Enter new name to save changes</div>` : ''}
         <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
-          <button type="submit" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);">Save</button>
+          <button type="submit" style="width:180px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);">Save</button>
           <button id="back-menu" type="button" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Back</button>
         </div>
       </form>
@@ -227,17 +228,163 @@ function showSettings() {
   uiManager.smoothTransition(content);
 
   document.getElementById('back-menu').onclick = showMainMenu;
+  
+  // Add real-time validation
+  const nameInput = document.getElementById('player-name');
+  const statusDiv = document.getElementById('settings-msg');
+  
+  nameInput.addEventListener('input', function() {
+    const currentName = localStorage.getItem('playerName') || '';
+    const newName = this.value.trim();
+    
+    if (newName === currentName && currentName !== '') {
+      statusDiv.innerHTML = '<div style="color: #f39c12;">💡 Enter a new name to save changes</div>';
+    } else if (newName.length > 0 && newName !== currentName) {
+      statusDiv.innerHTML = '<div style="color: #27ae60;">✓ Ready to save new name</div>';
+    } else {
+      statusDiv.innerHTML = '';
+    }
+  });
+  
   document.getElementById('settings-form').onsubmit = function (e) {
     e.preventDefault();
     const name = document.getElementById('player-name').value.trim();
+    const currentName = localStorage.getItem('playerName') || '';
+    
     if (name.length === 0) {
-      document.getElementById('settings-msg').textContent = 'Please enter your name.';
+      document.getElementById('settings-msg').innerHTML = '<div style="color: #e74c3c;">Please enter your name.</div>';
       return;
     }
-    localStorage.setItem('playerName', name);
-    document.getElementById('settings-msg').textContent = 'Name saved!';
+    
+    // Check if trying to save the same name
+    if (name === currentName && currentName !== '') {
+      document.getElementById('settings-msg').innerHTML = '<div style="color: #f39c12;">💡 Please enter a new name to save changes to blockchain</div>';
+      return;
+    }
+    
+    // Check if wallet is connected
+    if (!walletManager.isConnected()) {
+      document.getElementById('settings-msg').innerHTML = '<div style="color: #e74c3c;">Please connect your wallet first!</div>';
+      return;
+    }
+    
+    // Save name to blockchain with transaction
+    savePlayerNameToBlockchain(name);
   };
 }
+
+// Function to save player name to blockchain
+async function savePlayerNameToBlockchain(playerName) {
+  try {
+    console.log(`👤 Saving player name to blockchain: ${playerName}`);
+    
+    const walletInfo = walletManager.getWalletInfo();
+    const statusDiv = document.getElementById('settings-msg');
+    
+    if (!walletInfo.address) {
+      statusDiv.innerHTML = '<div style="color: #e74c3c;">Please connect your wallet first!</div>';
+      return;
+    }
+    
+    // Show loading status
+    statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Preparing blockchain transaction...</div>';
+    
+    // Try different integrations with proper fallback
+    let integrationToUse = null;
+    let integrationName = '';
+    
+    // Get the correct provider based on connected wallet
+    let provider = window.ethereum;
+    if (walletInfo.wallet === 'OKX Wallet' && window.okxwallet) {
+      provider = window.okxwallet;
+    }
+    
+    // Try IrysContractIntegration first
+    if (typeof window.IrysContractIntegration !== 'undefined') {
+      console.log('🔄 Trying IrysContractIntegration for name...');
+      statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing Irys Contract Integration...</div>';
+      
+      try {
+        const initialized = await window.IrysContractIntegration.initialize(provider);
+        if (initialized) {
+          integrationToUse = window.IrysContractIntegration;
+          integrationName = 'Irys Contract Integration';
+          console.log('✅ IrysContractIntegration initialized for name');
+        } else {
+          throw new Error('IrysContractIntegration failed to initialize');
+        }
+      } catch (error) {
+        console.warn('⚠️ IrysContractIntegration failed for name:', error.message);
+      }
+    }
+    
+    // Fallback to SimpleBlockchainIntegration
+    if (!integrationToUse && typeof window.SimpleBlockchainIntegration !== 'undefined') {
+      console.log('🔄 Trying SimpleBlockchainIntegration for name...');
+      statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing blockchain connection...</div>';
+      
+      try {
+        const initialized = await window.SimpleBlockchainIntegration.initialize(provider);
+        if (initialized) {
+          integrationToUse = window.SimpleBlockchainIntegration;
+          integrationName = 'Simple Blockchain Integration';
+          console.log('✅ SimpleBlockchainIntegration initialized for name');
+        } else {
+          throw new Error('SimpleBlockchainIntegration failed to initialize');
+        }
+      } catch (error) {
+        console.error('❌ SimpleBlockchainIntegration failed for name:', error.message);
+      }
+    }
+    
+    // Check if any integration is available
+    if (!integrationToUse) {
+      throw new Error('No blockchain integration available for name storage. Please refresh the page.');
+    }
+    
+    console.log(`✅ Using ${integrationName} for name storage`);
+    statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Creating blockchain transaction...</div>';
+    
+    // Add a small delay to show the status update
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    statusDiv.innerHTML = '<div style="color: #f39c12;">⏳ Please sign the transaction in your wallet...</div>';
+    
+    // Save name using the integration
+    const result = await integrationToUse.setPlayerName(playerName, walletInfo.address);
+    
+    if (result.success) {
+      // Transaction was successfully confirmed in blockchain
+      statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Name saved to blockchain successfully!</div>';
+      console.log('✅ Name saved to blockchain successfully!');
+      console.log('Smart Contract TX:', result.smartContractTxHash);
+      console.log('Player Name:', result.playerName);
+      
+    } else {
+      throw new Error(result.error || 'Name transaction failed');
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to save player name:', error);
+    const statusDiv = document.getElementById('settings-msg');
+    if (statusDiv) {
+      // Provide user-friendly error messages
+      let errorMessage = error.message;
+      
+      if (error.message.includes('rejected by user') || error.message.includes('User rejected')) {
+        errorMessage = 'Transaction cancelled by user';
+      } else if (error.message.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds for transaction';
+      } else if (error.message.includes('gas')) {
+        errorMessage = 'Transaction failed due to gas issues';
+      }
+      
+      statusDiv.innerHTML = `<div style="color: #e74c3c;">❌ ${errorMessage}</div>`;
+    }
+  }
+}
+
+
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', function () {
