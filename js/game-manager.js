@@ -56,18 +56,25 @@ export class GameManager {
       const originalShowModeSelection = this.gameInstance.showModeSelection.bind(this.gameInstance);
       this.gameInstance.showModeSelection = () => {
         originalShowModeSelection();
-
-        // Add handlers for mode buttons with blockchain transactions
+  
+        // Add handlers for mode buttons WITHOUT blockchain transactions
         setTimeout(() => {
           const endlessBtn = document.getElementById('endless-mode');
           const timedBtn = document.getElementById('timed-mode');
-
+  
           if (endlessBtn) {
-            endlessBtn.onclick = () => this.startGameWithTransaction('endless', this.gameInstance);
+            endlessBtn.onclick = () => {
+              this.gameInstance.gameMode = 'endless';
+              this.gameInstance.init();
+            };
           }
-
+  
           if (timedBtn) {
-            timedBtn.onclick = () => this.startGameWithTransaction('timed', this.gameInstance);
+            timedBtn.onclick = () => {
+              this.gameInstance.gameMode = 'timed';
+              this.gameInstance.timeLeft = 60;
+              this.gameInstance.init();
+            };
           }
         }, 100);
       };

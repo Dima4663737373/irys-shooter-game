@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Contract Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .warning { background-color: #fff3cd; }
+        .error { background-color: #f8d7da; }
+        button { padding: 10px 20px; margin: 5px; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Smart Contract Test</h1>
+    
+    <div class="test-section">
+        <h3>Contract Info</h3>
+        <div id="contract-info">Loading...</div>
+        <button onclick="checkContract()">🔍 Check Contract</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Name Operations</h3>
+        <input type="text" id="playerName" placeholder="Enter player name" value="TestUser">
+        <br>
+        <button onclick="checkNameAvailability()">🔍 Check Name Availability</button>
+        <button onclick="setPlayerName()">💾 Set Player Name</button>
+        <button onclick="getPlayerName()">📖 Get My Name</button>
+        <div id="name-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test Results</h3>
+        <div id="test-results"></div>
+    </div>
+    
+    <!-- Load ethers.js -->
+    <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    
+    <script>
+        const CONTRACT_CONFIG = {
+            address: "0xeca153302d9D2e040a4E25F68352Cb001b9625f6",
+            abi: [
+                {
+                    "inputs": [
+                        {"internalType": "string", "name": "_name", "type": "string"},
+                        {"internalType": "string", "name": "_irysTransactionId", "type": "string"}
+                    ],
+                    "name": "setPlayerName",
+                    "outputs": [],
+                    "stateMutability": "payable",
+                    "type": "function"
+                },
+                {
+                    "inputs": [{"internalType": "address", "name": "_player", "type": "address"}],
+                    "name": "getPlayerName",
+                    "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+                    "stateMutability": "view",
+                    "type": "function"
+                },
+                {
+                    "inputs": [{"internalType": "string", "name": "_name", "type": "string"}],
+                    "name": "getPlayerAddress",
+                    "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+                    "stateMutability": "view",
+                    "type": "function"
+                },
+                {
+                    "inputs": [{"internalType": "string", "name": "_name", "type": "string"}],
+                    "name": "isNameAvailable",
+                    "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+                    "stateMutability": "view",
+                    "type": "function"
+                }
+            ]
+        };
+        
+        let provider = null;
+        let signer = null;
+        let contract = null;
+        
+        // Initialize
+        window.addEventListener('load', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                contract = new ethers.Contract(CONTRACT_CONFIG.address, CONTRACT_CONFIG.abi, signer);
+                
+                await checkContract();
+            } else {
+                addTestResult('Initialization', 'error', 'No Ethereum provider detected');
+            }
+        });
+        
+        async function checkContract() {
+            try {
+                // Connect wallet
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                // Get network info
+                const network = await provider.getNetwork();
+                const address = await signer.getAddress();
+                const balance = await signer.getBalance();
+                
+                document.getElementById('contract-info').innerHTML = `
+                    <p><strong>Network:</strong> ${network.name} (${network.chainId})</p>
+                    <p><strong>Contract:</strong> ${CONTRACT_CONFIG.address}</p>
+                    <p><strong>Your Address:</strong> ${address}</p>
+                    <p><strong>Your Balance:</strong> ${ethers.utils.formatEther(balance)} ETH</p>
+                `;
+                
+                addTestResult('Contract Check', 'success', `Connected to ${network.name}`);
+                
+                // Test contract call
+                try {
+                    const currentName = await contract.getPlayerName(address);
+                    addTestResult('Contract Call', 'success', `Current name: "${currentName || 'Not set'}"`);
+                } catch (error) {
+                    addTestResult('Contract Call', 'error', `Contract call failed: ${error.message}`);
+                }
+                
+            } catch (error) {
+                addTestResult('Contract Check', 'error', error.message);
+            }
+        }
+        
+        async function checkNameAvailability() {
+            try {
+                const name = document.getElementById('playerName').value;
+                if (!name) {
+                    throw new Error('Please enter a name');
+                }
+                
+                const isAvailable = await contract.isNameAvailable(name);
+                const owner = await contract.getPlayerAddress(name);
+                
+                const resultDiv = document.getElementById('name-results');
+                if (isAvailable) {
+                    resultDiv.innerHTML = `<div class="success">✅ Name "${name}" is available</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="warning">⚠️ Name "${name}" is taken by: ${owner}</div>`;
+                }
+                
+                addTestResult('Name Check', 'success', `Name "${name}" availability: ${isAvailable}`);
+                
+            } catch (error) {
+                addTestResult('Name Check', 'error', error.message);
+            }
+        }
+        
+        async function setPlayerName() {
+            try {
+                const name = document.getElementById('playerName').value;
+                if (!name) {
+                    throw new Error('Please enter a name');
+                }
+                
+                // Validate name
+                if (name.length > 32) {
+                    throw new Error('Name too long (max 32 characters)');
+                }
+                
+                // Check balance
+                const balance = await signer.getBalance();
+                const requiredAmount = ethers.utils.parseEther("0.001");
+                
+                if (balance.lt(requiredAmount)) {
+                    throw new Error(`Insufficient balance. Required: 0.001 ETH, Available: ${ethers.utils.formatEther(balance)} ETH`);
+                }
+                
+                // Try to call contract methods to diagnose the issue
+                addTestResult('Diagnosis', 'warning', 'Running contract diagnostics...');
+                
+                try {
+                    // Test 1: Check if name is available
+                    const isAvailable = await contract.isNameAvailable(name);
+                    addTestResult('Diagnosis', 'success', `Name available: ${isAvailable}`);
+                    
+                    // Test 2: Get current name
+                    const currentName = await contract.getPlayerName(await signer.getAddress());
+                    addTestResult('Diagnosis', 'success', `Current name: "${currentName}"`);
+                    
+                    // Test 3: Try to estimate gas
+                    const mockIrysId = 'test_' + Date.now();
+                    const gasEstimate = await contract.estimateGas.setPlayerName(name, mockIrysId, {
+                        value: ethers.utils.parseEther("0.001")
+                    });
+                    addTestResult('Diagnosis', 'success', `Gas estimate: ${gasEstimate.toString()}`);
+                    
+                } catch (diagError) {
+                    addTestResult('Diagnosis', 'error', `Diagnosis failed: ${diagError.message}`);
+                    
+                    // If gas estimation fails, the transaction will definitely fail
+                    if (diagError.message.includes('execution reverted')) {
+                        throw new Error('Contract execution would revert. Check contract requirements.');
+                    }
+                }
+                
+                addTestResult('Set Name', 'warning', 'Sending transaction...');
+                
+                const mockIrysId = 'test_' + Date.now();
+                
+                // Try with minimal fee first
+                const tx = await contract.setPlayerName(name, mockIrysId, {
+                    value: ethers.utils.parseEther("0.00000001"), // Use contract's minimum fee
+                    gasLimit: 300000 // Increased gas limit
+                });
+                
+                addTestResult('Set Name', 'warning', `Transaction sent: ${tx.hash}`);
+                
+                const receipt = await tx.wait();
+                
+                if (receipt.status === 1) {
+                    addTestResult('Set Name', 'success', `Name set successfully! Block: ${receipt.blockNumber}`);
+                    document.getElementById('name-results').innerHTML = 
+                        `<div class="success">✅ Name "${name}" set successfully!</div>`;
+                } else {
+                    addTestResult('Set Name', 'error', 'Transaction failed - check contract logs');
+                    
+                    // Try to decode the failure reason
+                    try {
+                        const code = await provider.call(tx, receipt.blockNumber);
+                        addTestResult('Failure Reason', 'error', `Revert reason: ${code}`);
+                    } catch (e) {
+                        addTestResult('Failure Reason', 'error', 'Could not decode failure reason');
+                    }
+                }
+                
+            } catch (error) {
+                addTestResult('Set Name', 'error', error.message);
+                
+                // Show specific error details
+                if (error.code === 4001) {
+                    document.getElementById('name-results').innerHTML = 
+                        `<div class="error">❌ Transaction rejected by user</div>`;
+                } else if (error.message.includes('insufficient funds')) {
+                    document.getElementById('name-results').innerHTML = 
+                        `<div class="error">❌ Insufficient funds</div>`;
+                } else if (error.message.includes('execution reverted')) {
+                    document.getElementById('name-results').innerHTML = 
+                        `<div class="error">❌ Contract execution reverted: ${error.message}</div>`;
+                } else {
+                    document.getElementById('name-results').innerHTML = 
+                        `<div class="error">❌ ${error.message}</div>`;
+                }
+            }
+        }
+        
+        async function getPlayerName() {
+            try {
+                const address = await signer.getAddress();
+                const name = await contract.getPlayerName(address);
+                
+                document.getElementById('name-results').innerHTML = 
+                    `<div class="success">📖 Your current name: "${name || 'Not set'}"</div>`;
+                
+                addTestResult('Get Name', 'success', `Current name: "${name || 'Not set'}"`);
+                
+            } catch (error) {
+                addTestResult('Get Name', 'error', error.message);
+            }
+        }
+        
+        function addTestResult(test, status, message) {
+            const resultsDiv = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `test-section ${status}`;
+            div.innerHTML = `
+                <strong>${test}:</strong> ${message}
+                <small style="float: right;">${new Date().toLocaleTimeString()}</small>
+            `;
+            resultsDiv.appendChild(div);
+            
+            // Scroll to bottom
+            div.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

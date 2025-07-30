@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Network Switch Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .warning { background-color: #fff3cd; }
+        .error { background-color: #f8d7da; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🌐 Network Switch Test</h1>
+    
+    <div class="test-section">
+        <h3>Current Network Info</h3>
+        <div id="network-info">Loading...</div>
+        <button onclick="checkNetwork()">🔍 Check Current Network</button>
+        <button onclick="switchToIrys()">🔄 Switch to Irys Network</button>
+        <button onclick="switchToEthereum()">🔄 Switch to Ethereum Mainnet</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test Results</h3>
+        <div id="test-results"></div>
+    </div>
+    
+    <!-- Load ethers.js -->
+    <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    
+    <script>
+        const IRYS_CONFIG = {
+            chainId: 1270,
+            chainName: 'Irys Testnet',
+            rpcUrl: 'https://testnet-rpc.irys.xyz/v1/execution-rpc',
+            blockExplorerUrl: 'https://testnet-explorer.irys.xyz/',
+            nativeCurrency: {
+                name: 'IRYS',
+                symbol: 'IRYS',
+                decimals: 18
+            }
+        };
+        
+        let provider = null;
+        
+        // Initialize
+        window.addEventListener('load', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                provider = window.ethereum;
+                await checkNetwork();
+            } else {
+                document.getElementById('network-info').innerHTML = 
+                    '<div class="error">❌ No Ethereum provider detected</div>';
+            }
+        });
+        
+        async function checkNetwork() {
+            try {
+                if (!provider) {
+                    throw new Error('No provider available');
+                }
+                
+                const ethersProvider = new ethers.providers.Web3Provider(provider);
+                const network = await ethersProvider.getNetwork();
+                const accounts = await provider.request({ method: 'eth_accounts' });
+                
+                let networkStatus = '';
+                if (network.chainId === IRYS_CONFIG.chainId) {
+                    networkStatus = '<div class="success">✅ Connected to Irys Network</div>';
+                } else {
+                    networkStatus = `<div class="warning">⚠️ Connected to ${network.name || 'Unknown'} (${network.chainId})</div>`;
+                }
+                
+                document.getElementById('network-info').innerHTML = `
+                    ${networkStatus}
+                    <p><strong>Chain ID:</strong> ${network.chainId}</p>
+                    <p><strong>Network Name:</strong> ${network.name || 'Unknown'}</p>
+                    <p><strong>Connected Account:</strong> ${accounts[0] || 'Not connected'}</p>
+                `;
+                
+                addTestResult('Network Check', 'success', 
+                    `Current network: ${network.name || 'Unknown'} (${network.chainId})`);
+                
+            } catch (error) {
+                document.getElementById('network-info').innerHTML = 
+                    `<div class="error">❌ Error: ${error.message}</div>`;
+                addTestResult('Network Check', 'error', error.message);
+            }
+        }
+        
+        async function switchToIrys() {
+            try {
+                addTestResult('Switch to Irys', 'warning', 'Attempting to switch...');
+                
+                // First try to switch
+                try {
+                    await provider.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: '0x4F6' }], // 1270 in hex
+                    });
+                    
+                    addTestResult('Switch to Irys', 'success', 'Successfully switched to Irys Network');
+                    await checkNetwork();
+                    
+                } catch (switchError) {
+                    if (switchError.code === 4902) {
+                        // Network not added, try to add it
+                        addTestResult('Add Irys Network', 'warning', 'Adding Irys Network...');
+                        
+                        await provider.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: '0x4F6',
+                                chainName: IRYS_CONFIG.chainName,
+                                nativeCurrency: IRYS_CONFIG.nativeCurrency,
+                                rpcUrls: [IRYS_CONFIG.rpcUrl],
+                                blockExplorerUrls: [IRYS_CONFIG.blockExplorerUrl]
+                            }]
+                        });
+                        
+                        addTestResult('Add Irys Network', 'success', 'Irys Network added successfully');
+                        await checkNetwork();
+                        
+                    } else {
+                        throw switchError;
+                    }
+                }
+                
+            } catch (error) {
+                addTestResult('Switch to Irys', 'error', `Failed: ${error.message}`);
+            }
+        }
+        
+        async function switchToEthereum() {
+            try {
+                addTestResult('Switch to Ethereum', 'warning', 'Attempting to switch...');
+                
+                await provider.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x1' }], // Ethereum mainnet
+                });
+                
+                addTestResult('Switch to Ethereum', 'success', 'Successfully switched to Ethereum Mainnet');
+                await checkNetwork();
+                
+            } catch (error) {
+                addTestResult('Switch to Ethereum', 'error', `Failed: ${error.message}`);
+            }
+        }
+        
+        function addTestResult(test, status, message) {
+            const resultsDiv = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `test-section ${status}`;
+            div.innerHTML = `
+                <strong>${test}:</strong> ${message}
+                <small style="float: right;">${new Date().toLocaleTimeString()}</small>
+            `;
+            resultsDiv.appendChild(div);
+            
+            // Scroll to bottom
+            div.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Listen for network changes
+        if (window.ethereum) {
+            window.ethereum.on('chainChanged', (chainId) => {
+                const decimalChainId = parseInt(chainId, 16);
+                addTestResult('Network Changed', 'success', 
+                    `Network changed to chain ID: ${decimalChainId}`);
+                setTimeout(checkNetwork, 1000);
+            });
+        }
+    </script>
+</body>
+</html>
