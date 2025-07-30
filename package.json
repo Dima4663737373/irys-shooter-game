@@ -11,11 +11,12 @@
     "deploy:irys": "hardhat run scripts/deploy.js --network irysTestnet"
   },
   "dependencies": {
+    "@irys/sdk": "^0.2.11",
     "vite": "^5.0.0"
   },
   "devDependencies": {
-    "hardhat": "^2.26.0",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-    "dotenv": "^16.0.0"
+    "dotenv": "^16.0.0",
+    "hardhat": "^2.26.0"
   }
 }

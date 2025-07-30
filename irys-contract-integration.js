@@ -499,24 +499,48 @@ const IrysContractIntegration = {
   // Load Irys SDK from CDN
   async loadIrysSDK() {
     return new Promise((resolve, reject) => {
-      // Check if already loaded
+      // Перевіряємо чи SDK вже завантажений
       if (typeof window.Irys !== 'undefined') {
         console.log("✅ Irys SDK already loaded");
         resolve();
         return;
       }
-      
+
+      console.log("🔄 Loading Irys SDK...");
       const script = document.createElement('script');
-      script.src = "https://unpkg.com/@irys/sdk@latest/build/web/bundle.js";
-      script.onload = () => {
-        console.log("✅ Irys SDK loaded successfully");
-        // Wait a bit for the SDK to initialize
-        setTimeout(resolve, 500);
+      
+      // Спробуємо альтернативні URL
+      const sdkUrls = [
+        "https://unpkg.com/@irys/sdk@0.0.15/build/web/bundle.js",
+        "https://cdn.jsdelivr.net/npm/@irys/sdk@latest/build/web/bundle.js",
+        "https://unpkg.com/@irys/sdk/build/web/bundle.js"
+      ];
+      
+      let currentUrlIndex = 0;
+      
+      const tryLoadSDK = () => {
+        if (currentUrlIndex >= sdkUrls.length) {
+          console.error("❌ Failed to load Irys SDK from all sources");
+          reject(new Error("Failed to load Irys SDK"));
+          return;
+        }
+        
+        script.src = sdkUrls[currentUrlIndex];
+        console.log(`🔄 Trying to load SDK from: ${script.src}`);
+        
+        script.onload = () => {
+          console.log("✅ Irys SDK loaded successfully");
+          setTimeout(resolve, 500);
+        };
+        
+        script.onerror = () => {
+          console.warn(`⚠️ Failed to load SDK from: ${script.src}`);
+          currentUrlIndex++;
+          tryLoadSDK();
+        };
       };
-      script.onerror = () => {
-        console.error("❌ Failed to load Irys SDK");
-        reject(new Error("Failed to load Irys SDK"));
-      };
+      
+      tryLoadSDK();
       document.head.appendChild(script);
     });
   },
@@ -550,25 +574,9 @@ const IrysContractIntegration = {
         console.warn(`⚠️ Connected to different network (${network.chainId}), expected Irys (${IRYS_CONFIG.chainId})`);
       }
       
-      // Try to load Irys SDK (optional)
-      try {
-        await this.loadIrysSDK();
-        
-        if (typeof window.Irys !== 'undefined') {
-          // Create Irys instance
-          this.irysInstance = new window.Irys({
-            network: IRYS_CONFIG.network,
-            token: IRYS_CONFIG.token,
-            wallet: provider
-          });
-          console.log("✅ Irys SDK initialized successfully");
-        } else {
-          console.warn("⚠️ Irys SDK not available, continuing with smart contract only");
-        }
-      } catch (irysError) {
-        console.warn("⚠️ Irys SDK failed to load, continuing with smart contract only:", irysError.message);
-        this.irysInstance = null;
-      }
+      // Skip Irys SDK loading for now - smart contract works fine without it
+      console.log("ℹ️ Skipping Irys SDK loading - using smart contract only mode");
+      this.irysInstance = null;
       
       // Create smart contract instance (this is essential)
       this.contract = new ethers.Contract(

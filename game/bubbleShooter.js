@@ -259,7 +259,50 @@ export class BubbleShooterGame {
     }
 
     const content = `
-      <div id="mode-selection" style="background:rgba(255,255,255,0.95); backdrop-filter:blur(10px); border:2px solid rgba(255,255,255,0.3); border-radius:20px; padding:40px 32px; text-align:center; width:480px; margin:0 auto; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); animation: slideInUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
+      <div id="mode-selection" style="
+        background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+        border: 3px solid transparent;
+        background-clip: padding-box;
+        border-radius: 24px;
+        box-shadow: 
+          0 20px 60px rgba(0,0,0,0.15),
+          0 8px 32px rgba(67,206,162,0.2),
+          inset 0 1px 0 rgba(255,255,255,0.8);
+        padding: 40px 32px;
+        text-align: center;
+        width: 480px;
+        margin: 0 auto;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        animation: slideInUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      ">
+        <!-- Декоративний градієнт фон -->
+        <div style="
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, rgba(67,206,162,0.05) 0%, rgba(24,90,157,0.05) 100%);
+          border-radius: 24px;
+          z-index: -1;
+          animation: backgroundShimmer 4s ease-in-out infinite alternate;
+        "></div>
+        
+        <!-- Декоративна рамка -->
+        <div style="
+          position: absolute;
+          top: -2px;
+          left: -2px;
+          right: -2px;
+          bottom: -2px;
+          background: linear-gradient(135deg, #43cea2 0%, #185a9d 50%, #43cea2 100%);
+          border-radius: 26px;
+          z-index: -2;
+          animation: borderGlow 3s ease-in-out infinite alternate;
+        "></div>
+        
         <h2 id="mode-title" style="margin:0 0 32px 0; color:#333; font-size:2rem; font-weight:bold; animation: bounceIn 1s ease-out 0.3s both; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🎮 Select game mode</h2>
         <div style="display:flex; flex-direction:column; gap:16px; align-items:center;">
           <div style="display:flex; gap:16px; width:100%; justify-content:center;">
@@ -274,8 +317,20 @@ export class BubbleShooterGame {
             🏠 Back
           </button>
         </div>
-        <div id="floating-bubbles" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:hidden; border-radius:20px;">
+        <div id="floating-bubbles" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:hidden; border-radius:24px;">
         </div>
+        
+        <style>
+          @keyframes borderGlow {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
+          }
+          
+          @keyframes backgroundShimmer {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.7; }
+          }
+        </style>
       </div>
     `;
 

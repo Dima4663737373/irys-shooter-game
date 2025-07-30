@@ -161,13 +161,54 @@ function showLeaderboard() {
     recordsCount > 0 ? `<p style="color:#666; font-size:0.9rem; margin-bottom:16px;">${recordsCount} result${recordsCount > 1 ? 's' : ''}</p>` : '';
 
   const content = `
-    <div class="leaderboard" style="background:#ffffff; border:2px solid #43cea2; border-radius:18px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(67,206,162,0.2); padding:36px 32px; text-align:center; max-width:580px; margin:0 auto;">
-      <h2 style="font-size:2rem; color:#111; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🏆 Leaderboard</h2>
+    <div class="leaderboard" style="
+      background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+      border: 3px solid transparent;
+      background-clip: padding-box;
+      border-radius: 24px;
+      box-shadow: 
+        0 20px 60px rgba(0,0,0,0.15),
+        0 8px 32px rgba(67,206,162,0.2),
+        inset 0 1px 0 rgba(255,255,255,0.8);
+      padding: 40px 36px;
+      text-align: center;
+      max-width: 580px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    ">
+      <!-- Декоративний градієнт фон -->
+      <div style="
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(67,206,162,0.05) 0%, rgba(24,90,157,0.05) 100%);
+        border-radius: 24px;
+        z-index: -1;
+      "></div>
+      
+      <!-- Декоративна рамка -->
+      <div style="
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: linear-gradient(135deg, #43cea2 0%, #185a9d 50%, #43cea2 100%);
+        border-radius: 26px;
+        z-index: -2;
+        animation: borderGlow 3s ease-in-out infinite alternate;
+      "></div>
+      
+      <h2 style="font-size:2rem; color:#ffffff; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; z-index: 1;">🏆 Leaderboard</h2>
       
       ${playerBestSection}
       
       ${recordsInfo}
-      <div style="max-height:400px; overflow-y:auto; border:1px solid #e0e6ed; border-radius:8px; margin:16px 0;">
+      <div style="max-height:400px; overflow-y:auto; border:1px solid #e0e6ed; border-radius:8px; margin:16px 0; background: #ffffff; position: relative; z-index: 1;">
         <table style="width:100%; border-collapse:collapse; font-size:1.1rem;">
           <thead style="position:sticky; top:0; background:#e3f6fd; z-index:1;">
             <tr style="color:#2193b0;">
@@ -182,8 +223,15 @@ function showLeaderboard() {
         </tbody>
       </table>
       </div>
-      <button id="admin-clear" style="margin-bottom:16px; width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#e74c3c 0%,#c0392b 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(231,76,60,0.10);">Admin Clear</button><br>
-      <button id="back-menu" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Back</button>
+      <button id="admin-clear" style="margin-bottom:16px; width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#e74c3c 0%,#c0392b 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(231,76,60,0.10); position: relative; z-index: 1;">Admin Clear</button><br>
+      <button id="back-menu" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10); position: relative; z-index: 1;">Back</button>
+      
+      <style>
+        @keyframes borderGlow {
+          0% { opacity: 0.6; }
+          100% { opacity: 1; }
+        }
+      </style>
     </div>
   `;
   
@@ -207,69 +255,240 @@ function showLeaderboard() {
 
 function showSettings() {
   uiManager.setGlobalBackground();
-
-  const savedName = localStorage.getItem('playerName') || '';
-  const content = `
-    <div class="settings" style="background:#ffffff; border:2px solid #43cea2; border-radius:24px; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(67,206,162,0.2); padding:48px 32px; text-align:center; max-width:340px; margin:0 auto;">
-      <h2 style="font-size:2rem; color:#2193b0; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">⚙️ Settings</h2>
-      <form id="settings-form">
-        <label for="player-name" style="font-size:1.1rem; color:#185a9d;">Player Name:</label><br>
-        <input type="text" id="player-name" name="player-name" value="${savedName}" maxlength="16" placeholder="Enter your name" style="margin:18px 0 12px 0; padding:14px; border-radius:12px; border:1.5px solid #43cea2; width:220px; font-size:1.1rem; background:#f7fafc; box-shadow:0 2px 8px rgba(67,206,162,0.07); transition:border 0.3s ease-in-out;" required><br>
-        ${savedName ? `<div style="font-size:0.9rem; color:#666; margin-bottom:12px;">Current: "${savedName}" - Enter new name to save changes</div>` : ''}
-        <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
-          <button type="submit" style="width:180px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);">Save</button>
-          <button id="back-menu" type="button" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10);">Back</button>
+  
+  const currentName = localStorage.getItem('playerName') || '';
+  
+  const settingsContent = `
+    <div class="settings" style="
+      background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+      border: 3px solid transparent;
+      background-clip: padding-box;
+      border-radius: 24px;
+      box-shadow: 
+        0 20px 60px rgba(0,0,0,0.15),
+        0 8px 32px rgba(67,206,162,0.2),
+        inset 0 1px 0 rgba(255,255,255,0.8);
+      padding: 40px 36px;
+      text-align: center;
+      max-width: 500px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    ">
+      <!-- Декоративний градієнт фон -->
+      <div style="
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(67,206,162,0.05) 0%, rgba(24,90,157,0.05) 100%);
+        border-radius: 24px;
+        z-index: -1;
+      "></div>
+      
+      <!-- Декоративна рамка -->
+      <div style="
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: linear-gradient(135deg, #43cea2 0%, #185a9d 50%, #43cea2 100%);
+        border-radius: 26px;
+        z-index: -2;
+        animation: borderGlow 3s ease-in-out infinite alternate;
+      "></div>
+      
+      <h2 style="
+        font-size: 2.2rem;
+        color: #ffffff;
+        margin-bottom: 28px;
+        letter-spacing: 1.5px;
+        text-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        font-weight: 700;
+      ">⚙️ Settings</h2>
+      
+      <!-- Градієнтний фон переливання під текстом та кнопками -->
+      <div style="
+        position: absolute;
+        bottom: 80px;
+        left: 20px;
+        right: 20px;
+        height: 200px;
+        background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+        border-radius: 16px;
+        opacity: 0.08;
+        z-index: 0;
+        animation: backgroundShimmer 4s ease-in-out infinite alternate;
+      "></div>
+      
+      <form id="name-form" style="margin-bottom: 24px; position: relative; z-index: 1;">
+        <label for="player-name" style="
+          display: block;
+          margin-bottom: 12px;
+          color: #2c3e50;
+          font-weight: 600;
+          font-size: 1.15rem;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        ">Player Name:</label>
+        
+        <div style="position: relative; margin-bottom: 20px;">
+          <input type="text" id="player-name" value="${currentName}" maxlength="32" required style="
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-sizing: border-box;
+            background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+            box-shadow: 
+              inset 0 2px 4px rgba(0,0,0,0.06),
+              0 1px 3px rgba(0,0,0,0.1);
+            font-weight: 500;
+          ">
+          
+          <!-- Декоративна іконка -->
+          <div style="
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #95a5a6;
+            font-size: 1.2rem;
+            pointer-events: none;
+          ">👤</div>
         </div>
       </form>
-      <div id="settings-msg" style="color:#2193b0; margin-top:14px; font-size:1.05rem;"></div>
+      
+      <!-- Контейнер для кнопок по центру одна біля одної -->
+      <div style="
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 20px;
+        position: relative;
+        z-index: 1;
+      ">
+        <button type="submit" form="name-form" style="
+          width: 140px;
+          padding: 16px 0;
+          font-size: 1.1rem;
+          border-radius: 14px;
+          border: none;
+          background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+          color: #fff;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow: 
+            0 4px 16px rgba(67,206,162,0.3),
+            0 2px 8px rgba(0,0,0,0.1);
+          position: relative;
+          overflow: hidden;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        ">Save</button>
+        
+        <button onclick="showMainMenu()" style="
+          width: 140px;
+          padding: 16px 0;
+          font-size: 1.1rem;
+          border-radius: 14px;
+          border: 2px solid #bdc3c7;
+          background: linear-gradient(145deg, #ecf0f1 0%, #bdc3c7 100%);
+          color: #2c3e50;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow: 
+            0 4px 16px rgba(189,195,199,0.2),
+            0 2px 8px rgba(0,0,0,0.05);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          position: relative;
+        ">Back to Menu</button>
+      </div>
+      
+      <div id="settings-msg" style="
+        margin: 16px 0;
+        min-height: 28px;
+        font-weight: 500;
+        border-radius: 8px;
+        padding: 8px;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+      "></div>
     </div>
+    
+    <style>
+      @keyframes borderGlow {
+        0% { opacity: 0.6; }
+        100% { opacity: 1; }
+      }
+      
+      @keyframes backgroundShimmer {
+        0% {
+          opacity: 0.05;
+          transform: scale(1) rotate(0deg);
+        }
+        50% {
+          opacity: 0.12;
+          transform: scale(1.02) rotate(1deg);
+        }
+        100% {
+          opacity: 0.08;
+          transform: scale(1) rotate(0deg);
+        }
+      }
+      
+      #player-name:focus {
+        border-color: #43cea2 !important;
+        box-shadow: 
+          0 0 0 4px rgba(67,206,162,0.15),
+          inset 0 2px 4px rgba(0,0,0,0.06),
+          0 4px 16px rgba(67,206,162,0.2) !important;
+        background: #ffffff !important;
+      }
+      
+      button[type="submit"]:hover {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 
+          0 8px 24px rgba(67,206,162,0.4),
+          0 4px 16px rgba(0,0,0,0.15);
+        background: linear-gradient(135deg, #185a9d 0%, #43cea2 100%);
+      }
+      
+      button[onclick="showMainMenu()"]:hover {
+        transform: translateY(-2px) scale(1.02);
+        background: linear-gradient(145deg, #bdc3c7 0%, #95a5a6 100%);
+        border-color: #95a5a6;
+        box-shadow: 
+          0 6px 20px rgba(189,195,199,0.3),
+          0 3px 12px rgba(0,0,0,0.1);
+      }
+      
+      button:active {
+        transform: translateY(0) scale(0.98);
+      }
+    </style>
   `;
   
-  uiManager.smoothTransition(content);
-
-  document.getElementById('back-menu').onclick = showMainMenu;
+  uiManager.smoothTransition(settingsContent);
   
-  // Add real-time validation
+  const nameForm = document.getElementById('name-form');
   const nameInput = document.getElementById('player-name');
-  const statusDiv = document.getElementById('settings-msg');
   
-  nameInput.addEventListener('input', function() {
-    const currentName = localStorage.getItem('playerName') || '';
-    const newName = this.value.trim();
-    
-    if (newName === currentName && currentName !== '') {
-      statusDiv.innerHTML = '<div style="color: #f39c12;">💡 Enter a new name to save changes</div>';
-    } else if (newName.length > 0 && newName !== currentName) {
-      statusDiv.innerHTML = '<div style="color: #27ae60;">✓ Ready to save new name</div>';
-    } else {
-      statusDiv.innerHTML = '';
-    }
-  });
-  
-  document.getElementById('settings-form').onsubmit = function (e) {
+  nameForm.onsubmit = function (e) {
     e.preventDefault();
-    const name = document.getElementById('player-name').value.trim();
-    const currentName = localStorage.getItem('playerName') || '';
-    
-    if (name.length === 0) {
-      document.getElementById('settings-msg').innerHTML = '<div style="color: #e74c3c;">Please enter your name.</div>';
-      return;
+    const name = nameInput.value.trim();
+    if (name) {
+      // Завжди зберігаємо в блокчейні
+      savePlayerNameToBlockchain(name);
     }
-    
-    // Check if trying to save the same name
-    if (name === currentName && currentName !== '') {
-      document.getElementById('settings-msg').innerHTML = '<div style="color: #f39c12;">💡 Please enter a new name to save changes to blockchain</div>';
-      return;
-    }
-    
-    // Check if wallet is connected
-    if (!walletManager.isConnected()) {
-      document.getElementById('settings-msg').innerHTML = '<div style="color: #e74c3c;">Please connect your wallet first!</div>';
-      return;
-    }
-    
-    // Save name to blockchain with transaction
-    savePlayerNameToBlockchain(name);
   };
 }
 
@@ -282,104 +501,109 @@ async function savePlayerNameToBlockchain(playerName) {
     const statusDiv = document.getElementById('settings-msg');
     
     if (!walletInfo.address) {
-      statusDiv.innerHTML = '<div style="color: #e74c3c;">Please connect your wallet first!</div>';
+      statusDiv.innerHTML = '<div style="color: #e74c3c;">❌ Please connect your wallet first!</div>';
       return;
     }
     
-    // Show loading status
+    // Показуємо статус підготовки
     statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Preparing blockchain transaction...</div>';
     
-    // Try different integrations with proper fallback
-    let integrationToUse = null;
-    let integrationName = '';
-    
-    // Get the correct provider based on connected wallet
+    // Отримуємо правильний провайдер
     let provider = window.ethereum;
     if (walletInfo.wallet === 'OKX Wallet' && window.okxwallet) {
       provider = window.okxwallet;
     }
     
-    // Try IrysContractIntegration first
+    let integrationToUse = null;
+    let integrationName = '';
+    
+    // Спробуємо IrysContractIntegration
     if (typeof window.IrysContractIntegration !== 'undefined') {
-      console.log('🔄 Trying IrysContractIntegration for name...');
-      statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing Irys Contract Integration...</div>';
+      console.log('🔄 Using IrysContractIntegration...');
+      statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Connecting to Irys Network...</div>';
       
       try {
         const initialized = await window.IrysContractIntegration.initialize(provider);
         if (initialized) {
           integrationToUse = window.IrysContractIntegration;
           integrationName = 'Irys Contract Integration';
-          console.log('✅ IrysContractIntegration initialized for name');
-        } else {
-          throw new Error('IrysContractIntegration failed to initialize');
+          console.log('✅ IrysContractIntegration ready');
         }
       } catch (error) {
-        console.warn('⚠️ IrysContractIntegration failed for name:', error.message);
+        console.warn('⚠️ IrysContractIntegration failed:', error.message);
       }
     }
     
-    // Fallback to SimpleBlockchainIntegration
+    // Резервний варіант - SimpleBlockchainIntegration
     if (!integrationToUse && typeof window.SimpleBlockchainIntegration !== 'undefined') {
-      console.log('🔄 Trying SimpleBlockchainIntegration for name...');
-      statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Initializing blockchain connection...</div>';
+      console.log('🔄 Using SimpleBlockchainIntegration...');
+      statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Connecting to blockchain...</div>';
       
       try {
         const initialized = await window.SimpleBlockchainIntegration.initialize(provider);
         if (initialized) {
           integrationToUse = window.SimpleBlockchainIntegration;
           integrationName = 'Simple Blockchain Integration';
-          console.log('✅ SimpleBlockchainIntegration initialized for name');
-        } else {
-          throw new Error('SimpleBlockchainIntegration failed to initialize');
+          console.log('✅ SimpleBlockchainIntegration ready');
         }
       } catch (error) {
-        console.error('❌ SimpleBlockchainIntegration failed for name:', error.message);
+        console.error('❌ SimpleBlockchainIntegration failed:', error.message);
       }
     }
     
-    // Check if any integration is available
     if (!integrationToUse) {
-      throw new Error('No blockchain integration available for name storage. Please refresh the page.');
+      throw new Error('❌ No blockchain integration available. Please refresh the page and try again.');
     }
     
-    console.log(`✅ Using ${integrationName} for name storage`);
-    statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Creating blockchain transaction...</div>';
+    console.log(`✅ Using ${integrationName}`);
+    statusDiv.innerHTML = '<div style="color: #f39c12;">📝 Creating transaction...</div>';
     
-    // Add a small delay to show the status update
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    statusDiv.innerHTML = '<div style="color: #f39c12;">⏳ Please sign the transaction in your wallet...</div>';
+    statusDiv.innerHTML = '<div style="color: #3498db;">⏳ Please sign the transaction in your wallet...</div>';
     
-    // Save name using the integration
+    // Зберігаємо ім'я через інтеграцію
     const result = await integrationToUse.setPlayerName(playerName, walletInfo.address);
     
     if (result.success) {
-      // Transaction was successfully confirmed in blockchain
-      statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Name saved to blockchain successfully!</div>';
-      console.log('✅ Name saved to blockchain successfully!');
-      console.log('Smart Contract TX:', result.smartContractTxHash);
-      console.log('Player Name:', result.playerName);
+      // Також зберігаємо локально для швидкого доступу
+      localStorage.setItem('playerName', playerName);
+      
+      statusDiv.innerHTML = `
+        <div style="color: #27ae60;">✅ Name saved to blockchain successfully!</div>
+        <div style="color: #7f8c8d; font-size: 0.9em; margin-top: 5px;">
+          TX: ${result.smartContractTxHash ? result.smartContractTxHash.substring(0, 10) + '...' : 'Confirmed'}
+        </div>
+      `;
+      
+      console.log('✅ Name saved to blockchain:', {
+        playerName: result.playerName,
+        txHash: result.smartContractTxHash
+      });
       
     } else {
-      throw new Error(result.error || 'Name transaction failed');
+      throw new Error(result.error || 'Transaction failed');
     }
     
   } catch (error) {
     console.error('❌ Failed to save player name:', error);
     const statusDiv = document.getElementById('settings-msg');
+    
     if (statusDiv) {
-      // Provide user-friendly error messages
       let errorMessage = error.message;
       
+      // Користувацькі повідомлення про помилки
       if (error.message.includes('rejected by user') || error.message.includes('User rejected')) {
-        errorMessage = 'Transaction cancelled by user';
+        errorMessage = '❌ Transaction cancelled by user';
       } else if (error.message.includes('insufficient funds')) {
-        errorMessage = 'Insufficient funds for transaction';
-      } else if (error.message.includes('gas')) {
-        errorMessage = 'Transaction failed due to gas issues';
+        errorMessage = '❌ Insufficient funds for transaction fee';
+      } else if (error.message.includes('gas') || error.message.includes('UNPREDICTABLE_GAS_LIMIT')) {
+        errorMessage = '❌ Transaction failed due to network issues. Please try again.';
+      } else if (error.message.includes('No blockchain integration')) {
+        errorMessage = '❌ Blockchain connection failed. Please refresh the page.';
       }
       
-      statusDiv.innerHTML = `<div style="color: #e74c3c;">❌ ${errorMessage}</div>`;
+      statusDiv.innerHTML = `<div style="color: #e74c3c;">${errorMessage}</div>`;
     }
   }
 }
