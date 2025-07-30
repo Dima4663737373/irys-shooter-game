@@ -385,28 +385,18 @@ const SimpleBlockchainIntegration = {
         }
       }
       
-      // Fallback to simple transaction for localhost testing
-      console.log("🔄 Using simple transaction for localhost testing...");
+      // У функції setPlayerName, замініть fallback секцію:
       
-      const tx = await this.signer.sendTransaction({
-        to: walletAddress, // Send to self
-        value: ethers.utils.parseEther("0.00000001"), // Small fee
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(`setPlayerName:${playerName}`)),
-        gasLimit: 100000
-      });
+      // Fallback - тільки localStorage без блокчейн транзакції
+      console.log("🔄 Using localStorage fallback (no blockchain transaction)...");
       
-      console.log("🔄 Simple name transaction sent, waiting for confirmation...");
-      const receipt = await tx.wait();
-      
-      console.log("✅ Name transaction confirmed!");
-      
-      // Store name locally as well
+      // Store name locally
       localStorage.setItem('playerName', playerName);
       
       return {
         success: true,
-        smartContractTxHash: receipt.transactionHash,
-        irysTransactionId: 'simple_name_' + Date.now(),
+        smartContractTxHash: '0xfallback' + Date.now(),
+        irysTransactionId: 'localStorage_' + Date.now(),
         playerName: playerName
       };
       

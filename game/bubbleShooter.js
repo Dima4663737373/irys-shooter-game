@@ -1078,7 +1078,9 @@ export class BubbleShooterGame {
   }
 
   aim(e) {
-    if (this.shootingBubble.moving) return;
+    // Додаємо перевірку на існування shootingBubble
+    if (!this.shootingBubble || this.shootingBubble.moving) return;
+    
     const rect = this.canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;

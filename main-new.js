@@ -642,3 +642,15 @@ document.addEventListener('DOMContentLoaded', function () {
   
   showMainMenu();
 });
+
+function playMenuSound() {
+  // Перевіряємо чи користувач взаємодіяв зі сторінкою
+  if (document.hasStoredGesture || document.userHasInteracted) {
+    // Відтворюємо звук
+  }
+}
+
+// Додаємо слухач для першої взаємодії
+document.addEventListener('click', function() {
+  document.userHasInteracted = true;
+}, { once: true });
