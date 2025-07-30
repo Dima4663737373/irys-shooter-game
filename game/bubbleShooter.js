@@ -1099,7 +1099,7 @@ export class BubbleShooterGame {
   }
 
   shoot(e) {
-    if (this.shootingBubble.moving || this.isPaused || this.isGameOver) return;
+    if (!this.shootingBubble || this.shootingBubble.moving || this.isPaused || this.isGameOver) return;
 
     this.playSound('shoot');
 
@@ -1362,13 +1362,13 @@ export class BubbleShooterGame {
     const evenRow = row % 2 === 0;
     const bubbleSpacing = this.bubbleRadius * 2.1; // Збільшуємо простір між кульками
     const x = this.sidePadding + (evenRow ? 0 : this.bubbleRadius) + col * bubbleSpacing;
-    const y = row * this.bubbleRadius * 1.9 + this.bubbleRadius + 20; // Більший вертикальний простір
+    const y = row * this.bubbleRadius * 2.0 + this.bubbleRadius + 20; // Збільшуємо вертикальний простір
     return { x, y };
   }
 
   pixelToGrid(x, y) {
     const bubbleSpacing = this.bubbleRadius * 2.1;
-    const row = Math.floor((y - this.bubbleRadius - 20) / (this.bubbleRadius * 1.9));
+    const row = Math.floor((y - this.bubbleRadius - 20) / (this.bubbleRadius * 2.0)); // Оновлюємо відповідно
     const evenRow = row % 2 === 0;
     const col = Math.floor((x - this.sidePadding - (evenRow ? 0 : this.bubbleRadius)) / bubbleSpacing);
     return { row, col };

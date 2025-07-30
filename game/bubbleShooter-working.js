@@ -256,7 +256,7 @@ export class BubbleShooterGame {
 
     const content = `
       <div id="mode-selection" style="background:rgba(255,255,255,0.95); backdrop-filter:blur(10px); border:2px solid rgba(255,255,255,0.3); border-radius:20px; padding:40px 32px; text-align:center; width:480px; margin:0 auto; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); animation: slideInUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
-        <h2 id="mode-title" style="margin:0 0 32px 0; color:#333; font-size:2rem; font-weight:bold; animation: bounceIn 1s ease-out 0.3s both; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">🎮 Select game mode</h2>
+        <h2 id="mode-title" style="margin:0 0 32px 0; color:#ffffff; font-size:2rem; font-weight:bold; animation: bounceIn 1s ease-out 0.3s both; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">🎮 Select game mode</h2>
         <div style="display:flex; flex-direction:column; gap:16px; align-items:center;">
           <div style="display:flex; gap:16px; width:100%; justify-content:center;">
             <button id="endless-mode" style="flex:1; max-width:180px; padding:14px 16px; font-size:1rem; border-radius:10px; border:none; background:#43cea2; color:#fff; font-weight:bold; cursor:pointer; transition:all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); animation: slideInLeft 0.6s ease-out 0.5s both; box-shadow:0 4px 12px rgba(67,206,162,0.3);">
