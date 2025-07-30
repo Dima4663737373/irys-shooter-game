@@ -96,56 +96,57 @@
             console.log(`👤 Minimal fallback: Setting player name to "${playerName}"`);
             
             try {
-              // Перевіряємо чи це Netlify
-              const isNetlify = window.location.hostname.includes('netlify') || 
-                             window.location.hostname.includes('app');
-              
-              if (isNetlify) {
-                console.log('🌐 Netlify detected, using local storage only');
-                localStorage.setItem('playerName', playerName);
-                
-                return {
-                  success: true,
-                  smartContractTxHash: '0xnetlify' + Date.now(),
-                  irysTransactionId: 'netlify_' + Date.now(),
-                  playerName: playerName
-                };
-              }
-              
-              // Для локального тестування - спробуємо реальну транзакцію
+              // Спробуємо реальну транзакцію через гаманець
               if (typeof ethers !== 'undefined' && this.provider) {
-                console.log('🔄 Attempting real name transaction with fallback...');
+                console.log('🔄 Attempting real blockchain transaction...');
                 
                 const provider = new ethers.providers.Web3Provider(this.provider);
                 const signer = provider.getSigner();
+                const userAddress = await signer.getAddress();
                 
-                // Простий mock для уникнення помилок газу
-                console.log('🔄 Using mock transaction for compatibility...');
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                // Перевіряємо мережу і переключаємося на Irys Testnet якщо потрібно
+                const network = await provider.getNetwork();
+                if (network.chainId !== 1270) {
+                  console.log('🔄 Switching to Irys Testnet...');
+                  await this.switchToIrysNetwork();
+                }
                 
+                // Виконуємо реальну транзакцію з підписом через гаманець
+                const tx = await signer.sendTransaction({
+                  to: userAddress, // Відправляємо собі
+                  value: ethers.utils.parseEther('0.00000001'), // Мінімальна сума
+                  data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(`setPlayerName:${playerName}`)),
+                  gasLimit: 100000
+                });
+                
+                console.log('⏳ Waiting for transaction confirmation...');
+                const receipt = await tx.wait();
+                console.log('✅ Transaction confirmed:', receipt.transactionHash);
+                
+                // Зберігаємо локально після успішної транзакції
                 localStorage.setItem('playerName', playerName);
                 
                 return {
                   success: true,
-                  smartContractTxHash: '0x' + Math.random().toString(16).substr(2, 10),
-                  irysTransactionId: 'mock_name_' + Date.now(),
+                  smartContractTxHash: receipt.transactionHash,
+                  irysTransactionId: 'irys_' + Date.now(),
                   playerName: playerName
                 };
               } else {
-                throw new Error('No ethers or ethereum provider');
+                throw new Error('No ethers or ethereum provider available');
               }
             } catch (error) {
-              console.warn('⚠️ Name transaction failed, using mock:', error.message);
+              console.warn('⚠️ Blockchain transaction failed:', error.message);
               
-              // Fallback до mock транзакції
-              await new Promise(resolve => setTimeout(resolve, 1500));
+              // Fallback до локального збереження тільки якщо транзакція не вдалася
               localStorage.setItem('playerName', playerName);
               
               return {
                 success: true,
-                smartContractTxHash: '0x' + Math.random().toString(16).substr(2, 10),
-                irysTransactionId: 'mock_name_' + Date.now(),
-                playerName: playerName
+                smartContractTxHash: '0xfallback' + Date.now(),
+                irysTransactionId: 'fallback_' + Date.now(),
+                playerName: playerName,
+                note: 'Saved locally due to blockchain error'
               };
             }
           },
