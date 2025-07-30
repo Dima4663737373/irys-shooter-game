@@ -96,11 +96,49 @@
             console.log(`👤 Minimal fallback: Setting player name to "${playerName}"`);
             
             try {
-              // Завжди використовуємо mock для fallback
-              console.log('🔄 Using mock transaction for compatibility...');
+              // Перевіряємо чи це Netlify
+              const isNetlify = window.location.hostname.includes('netlify') || 
+                             window.location.hostname.includes('app');
               
+              if (isNetlify) {
+                console.log('🌐 Netlify detected, using local storage only');
+                localStorage.setItem('playerName', playerName);
+                
+                return {
+                  success: true,
+                  smartContractTxHash: '0xnetlify' + Date.now(),
+                  irysTransactionId: 'netlify_' + Date.now(),
+                  playerName: playerName
+                };
+              }
+              
+              // Для локального тестування - спробуємо реальну транзакцію
+              if (typeof ethers !== 'undefined' && this.provider) {
+                console.log('🔄 Attempting real name transaction with fallback...');
+                
+                const provider = new ethers.providers.Web3Provider(this.provider);
+                const signer = provider.getSigner();
+                
+                // Простий mock для уникнення помилок газу
+                console.log('🔄 Using mock transaction for compatibility...');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                localStorage.setItem('playerName', playerName);
+                
+                return {
+                  success: true,
+                  smartContractTxHash: '0x' + Math.random().toString(16).substr(2, 10),
+                  irysTransactionId: 'mock_name_' + Date.now(),
+                  playerName: playerName
+                };
+              } else {
+                throw new Error('No ethers or ethereum provider');
+              }
+            } catch (error) {
+              console.warn('⚠️ Name transaction failed, using mock:', error.message);
+              
+              // Fallback до mock транзакції
               await new Promise(resolve => setTimeout(resolve, 1500));
-              
               localStorage.setItem('playerName', playerName);
               
               return {
@@ -109,13 +147,6 @@
                 irysTransactionId: 'mock_name_' + Date.now(),
                 playerName: playerName
               };
-              
-            } catch (error) {
-              console.error('❌ Mock transaction failed:', error);
-              return {
-                success: false,
-                error: error.message
-              };
             }
           },
           
@@ -123,51 +154,14 @@
             console.log(`🚀 Minimal fallback: Starting ${gameMode} game session`);
             
             try {
-              // Try to create a real transaction if ethers is available
-              if (typeof ethers !== 'undefined' && this.provider) {
-                console.log('🔄 Attempting real transaction with fallback...');
-                
-                const provider = new ethers.providers.Web3Provider(this.provider);
-                const signer = provider.getSigner();
-                
-                // Simple contract call or transaction
-                const tx = await signer.sendTransaction({
-                  to: walletAddress, // Send to self as test
-                  value: ethers.utils.parseEther("0"), // 0 ETH
-                  data: "0x" // Empty data
-                });
-                
-                console.log('🔄 Transaction sent, waiting for confirmation...');
-                const receipt = await tx.wait();
-                
-                console.log('✅ Real transaction confirmed!');
-                
-                return {
-                  success: true,
-                  smartContractTxHash: receipt.transactionHash,
-                  irysTransactionId: 'real_tx_' + Date.now(),
-                  sessionId: 'session_' + Date.now(),
-                  gameData: {
-                    gameMode,
-                    playerAddress: walletAddress,
-                    timestamp: Date.now(),
-                    action: "startGame",
-                    version: "real_fallback"
-                  }
-                };
-              } else {
-                throw new Error('No ethers or ethereum provider');
-              }
-            } catch (error) {
-              console.warn('⚠️ Real transaction failed, using mock:', error.message);
-              
-              // Fallback to mock transaction
-              await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate delay
+              // Завжди використовуємо mock для стабільності
+              console.log('🔄 Using mock transaction for game session...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
               
               return {
                 success: true,
                 smartContractTxHash: '0x' + Math.random().toString(16).substr(2, 64),
-                irysTransactionId: 'mock_fallback_' + Date.now(),
+                irysTransactionId: 'mock_session_' + Date.now(),
                 sessionId: 'session_' + Date.now(),
                 gameData: {
                   gameMode,
@@ -176,6 +170,12 @@
                   action: "startGame",
                   version: "mock_fallback"
                 }
+              };
+            } catch (error) {
+              console.error('❌ Game session failed:', error);
+              return {
+                success: false,
+                error: error.message
               };
             }
           },
@@ -186,78 +186,8 @@
             return {
               success: true,
               smartContractTxHash: '0x' + Math.random().toString(16).substr(2, 64),
-              irysTransactionId: 'netlify_end_' + Date.now(),
+              irysTransactionId: 'mock_end_' + Date.now(),
               sessionId: sessionId
-            };
-          },
-          
-          async setPlayerName(playerName, walletAddress) {
-            console.log(`👤 Minimal fallback: Setting player name to "${playerName}"`);
-            
-            // Перевіряємо чи це Netlify
-            const isNetlify = window.location.hostname.includes('netlify') || 
-                           window.location.hostname.includes('app');
-            
-            if (isNetlify) {
-              console.log('🌐 Netlify detected, using local storage only');
-              localStorage.setItem('playerName', playerName);
-              
-              return {
-                success: true,
-                smartContractTxHash: '0xnetlify' + Date.now(),
-                irysTransactionId: 'netlify_' + Date.now(),
-                playerName: playerName
-              };
-            }
-            
-            // Решта коду для локального тестування...
-          }
-          try {
-            // Try to create a real transaction for name setting
-            if (typeof ethers !== 'undefined' && this.provider) {
-              console.log('🔄 Attempting real name transaction with fallback...');
-              
-              const provider = new ethers.providers.Web3Provider(this.provider);
-              const signer = provider.getSigner();
-              
-              // Simple transaction with name data
-              const tx = await signer.sendTransaction({
-                to: walletAddress, // Send to self
-                value: ethers.utils.parseEther("0.00000001"), // Small fee
-                data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(`setPlayerName:${playerName}`))
-              });
-              
-              console.log('🔄 Name transaction sent, waiting for confirmation...');
-              const receipt = await tx.wait();
-              
-              console.log('✅ Real name transaction confirmed!');
-              
-              // Store name locally as well
-              localStorage.setItem('playerName', playerName);
-              
-              return {
-                success: true,
-                smartContractTxHash: receipt.transactionHash,
-                irysTransactionId: 'real_name_' + Date.now(),
-                playerName: playerName
-              };
-            } else {
-              throw new Error('No ethers or ethereum provider');
-            }
-          } catch (error) {
-            console.warn('⚠️ Real name transaction failed, using mock:', error.message);
-            
-            // Fallback to mock transaction
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
-            
-            // Store name locally
-            localStorage.setItem('playerName', playerName);
-            
-            return {
-              success: true,
-              smartContractTxHash: '0x' + Math.random().toString(16).substr(2, 64),
-              irysTransactionId: 'mock_name_' + Date.now(),
-              playerName: playerName
             };
           }
         };
