@@ -486,7 +486,17 @@ function showSettings() {
     e.preventDefault();
     const name = nameInput.value.trim();
     if (name) {
-      // Завжди зберігаємо в блокчейні
+      // Перевіряємо чи ім'я вже збережено
+      const currentPlayerName = localStorage.getItem('playerName');
+      if (currentPlayerName && currentPlayerName === name) {
+        const statusDiv = document.getElementById('settings-msg');
+        if (statusDiv) {
+          statusDiv.innerHTML = '<div style="color: #e74c3c;">❌ Це ім\'я вже зайняте, введіть інше</div>';
+        }
+        return;
+      }
+      
+      // Якщо ім'я нове або відрізняється - зберігаємо в блокчейні
       savePlayerNameToBlockchain(name);
     }
   };
@@ -505,8 +515,13 @@ async function savePlayerNameToBlockchain(playerName) {
       return;
     }
     
+    // Перевіряємо чи це оновлення імені
+    const currentPlayerName = localStorage.getItem('playerName');
+    const isUpdate = currentPlayerName && currentPlayerName !== playerName;
+    
     // Показуємо статус підготовки
-    statusDiv.innerHTML = '<div style="color: #f39c12;">🔄 Preparing blockchain transaction...</div>';
+    const actionText = isUpdate ? 'Updating' : 'Saving';
+    statusDiv.innerHTML = `<div style="color: #f39c12;">🔄 ${actionText} player name to blockchain...</div>`;
     
     // Отримуємо правильний провайдер
     let provider = window.ethereum;
@@ -569,8 +584,9 @@ async function savePlayerNameToBlockchain(playerName) {
       // Також зберігаємо локально для швидкого доступу
       localStorage.setItem('playerName', playerName);
       
+      const successText = isUpdate ? 'Name updated' : 'Name saved';
       statusDiv.innerHTML = `
-        <div style="color: #27ae60;">✅ Name saved to blockchain successfully!</div>
+        <div style="color: #27ae60;">✅ ${successText} to blockchain successfully!</div>
         <div style="color: #7f8c8d; font-size: 0.9em; margin-top: 5px;">
           TX: ${result.smartContractTxHash ? result.smartContractTxHash.substring(0, 10) + '...' : 'Confirmed'}
         </div>
