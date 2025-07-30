@@ -491,7 +491,7 @@ function showSettings() {
       if (currentPlayerName && currentPlayerName === name) {
         const statusDiv = document.getElementById('settings-msg');
         if (statusDiv) {
-          statusDiv.innerHTML = '<div style="color: #e74c3c;">❌ Це ім\'я вже зайняте, введіть інше</div>';
+          statusDiv.innerHTML = '<div style="color: #e74c3c;">❌ This name is already taken, please enter a different one</div>';
         }
         return;
       }
