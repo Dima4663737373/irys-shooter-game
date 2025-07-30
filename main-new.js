@@ -223,7 +223,7 @@ function showLeaderboard() {
         </tbody>
       </table>
       </div>
-      <button id="admin-clear" style="margin-bottom:16px; width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#e74c3c 0%,#c0392b 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(231,76,60,0.10); position: relative; z-index: 1;">Admin Clear</button><br>
+      <!-- Видаляємо кнопку Admin Clear -->
       <button id="back-menu" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10); position: relative; z-index: 1;">Back</button>
       
       <style>
@@ -238,19 +238,24 @@ function showLeaderboard() {
   uiManager.smoothTransition(content);
 
   document.getElementById('back-menu').onclick = showMainMenu;
-  document.getElementById('admin-clear').onclick = function () {
-    const password = prompt('Enter admin password to clear leaderboard:');
-
-    if (password === 'IrysOwner2024') {
-      if (confirm('Admin access confirmed. Are you sure you want to clear the entire leaderboard? This action cannot be undone.')) {
-        localStorage.removeItem('bubbleLeaderboard');
-        alert('Leaderboard cleared successfully!');
-        showLeaderboard();
+  
+  // Прихована комбінація клавіш для очищення лідерборду
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+      e.preventDefault();
+      const password = prompt('Enter admin password to clear leaderboard:');
+      
+      if (password === 'IrysOwner2024') {
+        if (confirm('Admin access confirmed. Are you sure you want to clear the entire leaderboard? This action cannot be undone.')) {
+          localStorage.removeItem('bubbleLeaderboard');
+          alert('Leaderboard cleared successfully!');
+          showLeaderboard();
+        }
+      } else if (password !== null) {
+        alert('Access denied. Invalid admin password.');
       }
-    } else if (password !== null) {
-      alert('Access denied. Invalid admin password.');
     }
-  };
+  });
 }
 
 function showSettings() {
