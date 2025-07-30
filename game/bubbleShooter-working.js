@@ -630,10 +630,55 @@ export class BubbleShooterGame {
   }
 
   exitGame() {
+    // Якщо гра була розпочата і є очки, показуємо діалог підтвердження
+    if (this.score > 0 && !this.isGameOver) {
+      console.log(`🚪 EXIT GAME: Показуємо діалог збереження - Score: ${this.score}`);
+      
+      // Зберігаємо поточний стан гри для можливості повернення
+      this.gameStateBeforeExit = {
+        isPaused: this.isPaused,
+        score: this.score,
+        gameMode: this.gameMode || 'endless'
+      };
+      
+      if (typeof window.showExitConfirmationDialog === 'function') {
+        window.showExitConfirmationDialog(this.score, this.gameMode || 'endless');
+        return; // Не виходимо одразу, чекаємо рішення користувача
+      } else {
+        console.error(`❌ Функція showExitConfirmationDialog не знайдена!`);
+        // Fallback до старої логіки
+        if (typeof window.saveToLeaderboard === 'function') {
+          window.saveToLeaderboard(this.score, this.gameMode || 'endless');
+          return;
+        }
+      }
+    } else if (this.score === 0) {
+      console.log(`🚪 EXIT GAME: Результат не зберігається - гра не була розпочата (score = 0)`);
+    } else if (this.isGameOver) {
+      console.log(`🚪 EXIT GAME: Результат вже збережено при game over`);
+    }
+
+    // Виконуємо фактичний вихід з гри
+    this.performActualExit();
+  }
+  
+  // Метод для фактичного виходу з гри
+  performActualExit() {
     this.isGameOver = true;
     this.stopMoveTimer();
     if (typeof window.showMainMenu === 'function') {
       window.showMainMenu();
+    }
+  }
+  
+  // Метод для повернення до гри (викликається при скасуванні виходу)
+  resumeFromExitDialog() {
+    if (this.gameStateBeforeExit) {
+      this.isPaused = this.gameStateBeforeExit.isPaused;
+      if (!this.isPaused) {
+        this.resumeGame();
+      }
+      this.gameStateBeforeExit = null;
     }
   }
 

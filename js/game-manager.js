@@ -51,6 +51,11 @@ export class GameManager {
 
       this.gameInstance = new GameClass(gameContainer);
       console.log('showGame: Game instance created:', this.gameInstance);
+      
+      // Set the current game instance for global access
+      if (typeof window.setCurrentGameInstance === 'function') {
+        window.setCurrentGameInstance(this.gameInstance);
+      }
 
       // Modify showModeSelection for blockchain integration
       const originalShowModeSelection = this.gameInstance.showModeSelection.bind(this.gameInstance);

@@ -1177,6 +1177,9 @@ export class BubbleShooterGame {
 
       // 📈 ПРОГРЕСИВНЕ ПІДВИЩЕННЯ СКЛАДНОСТІ (кожні 20 секунд)
       this.difficultyInterval = setInterval(() => {
+        // Перевіряємо чи гра не на паузі та не закінчена
+        if (this.isPaused || this.isGameOver) return;
+        
         this.difficultyLevel++;
         this.difficultyMultiplier = Math.min(this.difficultyMultiplier * 1.4, 8);
         this.dropSpeed = Math.max(this.dropSpeed * 0.9, 4); // Швидше опускання
@@ -1188,13 +1191,18 @@ export class BubbleShooterGame {
         // Оновлюємо швидкість опускання
         if (this.dropSpeedTimer) clearInterval(this.dropSpeedTimer);
         this.dropSpeedTimer = setInterval(() => {
-          this.dropBubblesOneRow();
+          if (!this.isPaused && !this.isGameOver) {
+            this.dropBubblesOneRow();
+          }
         }, this.dropSpeed * 1000);
 
       }, 20000);
 
       // 🪨 ЗАГРОЗЛИВІ РЯДИ (частіше з часом)
       this.threatRowTimer = setInterval(() => {
+        // Перевіряємо чи гра не на паузі та не закінчена
+        if (this.isPaused || this.isGameOver) return;
+        
         const threatChance = 0.2 + (this.difficultyLevel * 0.05);
         if (Math.random() < threatChance) {
           this.generateAdvancedThreatPattern();
@@ -1204,11 +1212,16 @@ export class BubbleShooterGame {
 
       // ⚡ ПОЧАТКОВЕ ОПУСКАННЯ
       this.dropSpeedTimer = setInterval(() => {
-        this.dropBubblesOneRow();
+        if (!this.isPaused && !this.isGameOver) {
+          this.dropBubblesOneRow();
+        }
       }, this.dropSpeed * 1000);
 
       // 🎯 СПЕЦІАЛЬНІ ПОДІЇ (кожні 45 секунд)
       this.specialEventTimer = setInterval(() => {
+        // Перевіряємо чи гра не на паузі та не закінчена
+        if (this.isPaused || this.isGameOver) return;
+        
         this.triggerSpecialEvent();
       }, 45000);
 
@@ -1875,21 +1888,40 @@ export class BubbleShooterGame {
   }
 
   exitGame() {
-    // Зберігаємо результат перед виходом, якщо гра була розпочата і є очки
+    // Якщо гра була розпочата і є очки, показуємо діалог підтвердження
     if (this.score > 0 && !this.isGameOver) {
-      console.log(`🚪 EXIT GAME: Зберігаємо результат перед виходом - Score: ${this.score}, Mode: ${this.gameMode}`);
-
-      if (typeof window.saveToLeaderboard === 'function') {
-        console.log(`✅ Зберігаємо результат при виході з гри`);
-        window.saveToLeaderboard(this.score, this.gameMode);
+      console.log(`🚪 EXIT GAME: Показуємо діалог збереження - Score: ${this.score}, Mode: ${this.gameMode}`);
+      
+      // Зберігаємо поточний стан гри для можливості повернення
+      this.gameStateBeforeExit = {
+        isPaused: this.isPaused,
+        score: this.score,
+        gameMode: this.gameMode
+      };
+      
+      if (typeof window.showExitConfirmationDialog === 'function') {
+        window.showExitConfirmationDialog(this.score, this.gameMode);
+        return; // Не виходимо одразу, чекаємо рішення користувача
       } else {
-        console.error(`❌ Функція saveToLeaderboard не знайдена при виході!`);
+        console.error(`❌ Функція showExitConfirmationDialog не знайдена!`);
+        // Fallback до старої логіки
+        if (typeof window.saveToLeaderboard === 'function') {
+          window.saveToLeaderboard(this.score, this.gameMode);
+          return;
+        }
       }
     } else if (this.score === 0) {
       console.log(`🚪 EXIT GAME: Результат не зберігається - гра не була розпочата (score = 0)`);
     } else if (this.isGameOver) {
       console.log(`🚪 EXIT GAME: Результат вже збережено при game over`);
     }
+
+    // Виконуємо фактичний вихід з гри
+    this.performActualExit();
+  }
+  
+  // Метод для фактичного виходу з гри
+  performActualExit() {
 
     // Очищуємо всі таймери
     if (this.difficultyInterval) clearInterval(this.difficultyInterval);
@@ -1904,6 +1936,17 @@ export class BubbleShooterGame {
     // Встановлюємо правильний фон перед поверненням в меню
     if (typeof window.setGlobalBackground === 'function') window.setGlobalBackground();
     if (typeof window.showMainMenu === 'function') window.showMainMenu();
+  }
+  
+  // Метод для повернення до гри (викликається при скасуванні виходу)
+  resumeFromExitDialog() {
+    if (this.gameStateBeforeExit) {
+      this.isPaused = this.gameStateBeforeExit.isPaused;
+      if (!this.isPaused) {
+        this.resumeGame();
+      }
+      this.gameStateBeforeExit = null;
+    }
   }
 
   // 🔥 ПОКАЗ ПОВІДОМЛЕННЯ ПРО ПІДВИЩЕННЯ СКЛАДНОСТІ

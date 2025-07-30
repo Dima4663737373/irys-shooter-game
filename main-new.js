@@ -12,27 +12,280 @@ const gameManager = new GameManager(uiManager, walletManager);
 // Global function to save results to leaderboard
 function saveToLeaderboard(score, gameMode = 'endless') {
   console.log(`🏆 saveToLeaderboard called: score=${score}, gameMode=${gameMode}`);
+  
+  // Show submit score dialog
+  if (score > 0) {
+    showSubmitScoreDialog(score, gameMode);
+  }
+}
 
-  const playerName = localStorage.getItem('playerName') || 'Anonymous';
-  const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
-
-  const newResult = {
-    name: playerName,
-    score: score,
-    mode: gameMode || 'endless',
-    date: new Date().toISOString()
+// Function to show exit confirmation dialog
+function showExitConfirmationDialog(score, gameMode = 'endless') {
+  const content = `
+    <div class="exit-confirmation-dialog" style="
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: 3px solid rgba(255,255,255,0.3);
+      background-clip: padding-box;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(102,126,234,0.4);
+      padding: 40px 36px;
+      text-align: center;
+      max-width: 500px;
+      margin: 0 auto;
+      position: relative;
+    ">
+      <h2 style="font-size:2rem; color:#ffffff; margin-bottom:24px;">🚪 Exit Game</h2>
+      <p style="font-size:1.5rem; color:#43cea2; font-weight:bold; margin-bottom:20px;">Your Score: ${score}</p>
+      <p style="color:#ffffff; opacity:0.9; margin-bottom:30px;">Would you like to save your progress before exiting?</p>
+      
+      <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; max-width: 100%;">
+        <button id="save-and-exit-btn" style="
+          background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+          color: white;
+          border: none;
+          padding: 12px 16px;
+          border-radius: 12px;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 1rem;
+          transition: all 0.3s ease;
+          min-width: 120px;
+          max-width: 140px;
+          flex: 1;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        ">Save & Exit</button>
+        <button id="exit-without-save-btn" style="
+          background: #e74c3c;
+          color: white;
+          border: none;
+          padding: 12px 16px;
+          border-radius: 12px;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 1rem;
+          min-width: 120px;
+          max-width: 140px;
+          flex: 1;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        ">Exit Without Saving</button>
+        <button id="cancel-exit-btn" style="
+          background: #95a5a6;
+          color: white;
+          border: none;
+          padding: 12px 16px;
+          border-radius: 12px;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 1rem;
+          min-width: 120px;
+          max-width: 140px;
+          flex: 1;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        ">Cancel</button>
+      </div>
+    </div>
+  `;
+  
+  uiManager.smoothTransition(content);
+  
+  const saveAndExitBtn = document.getElementById('save-and-exit-btn');
+  const exitWithoutSaveBtn = document.getElementById('exit-without-save-btn');
+  const cancelExitBtn = document.getElementById('cancel-exit-btn');
+  
+  saveAndExitBtn.onclick = async () => {
+    // Prevent multiple submissions
+    if (isSubmittingScore) {
+      console.log('Score submission already in progress...');
+      return;
+    }
+    
+    // Set submission state and update UI
+    isSubmittingScore = true;
+    saveAndExitBtn.disabled = true;
+    saveAndExitBtn.style.background = '#95a5a6';
+    saveAndExitBtn.style.cursor = 'not-allowed';
+    saveAndExitBtn.innerHTML = '🔄 Saving...';
+    exitWithoutSaveBtn.disabled = true;
+    exitWithoutSaveBtn.style.opacity = '0.5';
+    cancelExitBtn.disabled = true;
+    cancelExitBtn.style.opacity = '0.5';
+    
+    try {
+      await saveGameScore(score, gameMode);
+      // Встановлюємо флаг що результат збережено в поточній грі
+      if (currentGameInstance && typeof currentGameInstance.scoreSubmitted !== 'undefined') {
+        currentGameInstance.scoreSubmitted = true;
+        console.log('✅ Score submission flag set in game instance');
+      }
+    } catch (error) {
+      console.log('Blockchain save failed:', error.message);
+      alert('Failed to save score: ' + error.message);
+    } finally {
+      // Reset submission state
+      isSubmittingScore = false;
+      showMainMenu();
+    }
   };
+  
+  exitWithoutSaveBtn.onclick = () => {
+    if (!isSubmittingScore) {
+      showMainMenu();
+    }
+  };
+  
+  cancelExitBtn.onclick = () => {
+    if (!isSubmittingScore) {
+      // Return to game - we need to call the game's resume function
+      if (typeof window.resumeCurrentGame === 'function') {
+        window.resumeCurrentGame();
+      }
+    }
+  };
+}
 
-  leaderboard.push(newResult);
-  leaderboard.sort((a, b) => b.score - a.score);
-  const topResults = leaderboard.slice(0, 50);
+// Variable to track if score submission is in progress
+let isSubmittingScore = false;
 
-  localStorage.setItem('bubbleLeaderboard', JSON.stringify(topResults));
-  console.log(`💾 Result saved! Now leaderboard has ${topResults.length} entries`);
+// Function to show submit score dialog
+function showSubmitScoreDialog(score, gameMode = 'endless') {
+  const content = `
+    <div class="submit-score-dialog" style="
+      background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+      border: 3px solid transparent;
+      background-clip: padding-box;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      padding: 40px 36px;
+      text-align: center;
+      max-width: 500px;
+      margin: 0 auto;
+      position: relative;
+    ">
+      <h2 style="font-size:2rem; color:#333; margin-bottom:24px;">🎮 Game Over!</h2>
+      <p style="font-size:1.5rem; color:#43cea2; font-weight:bold; margin-bottom:20px;">Your Score: ${score}</p>
+      <p style="color:#666; margin-bottom:30px;">Would you like to submit your score to the blockchain leaderboard?</p>
+      
+      <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; max-width: 100%;">
+        <button id="submit-score-btn" style="
+          background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+          color: white;
+          border: none;
+          padding: 12px 16px;
+          border-radius: 12px;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 1rem;
+          transition: all 0.3s ease;
+          min-width: 120px;
+          max-width: 140px;
+          flex: 1;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        ">Submit Score</button>
+        <button id="skip-submit-btn" style="
+          background: #95a5a6;
+          color: white;
+          border: none;
+          padding: 12px 16px;
+          border-radius: 12px;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 1rem;
+          min-width: 120px;
+          max-width: 140px;
+          flex: 1;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        ">Skip</button>
+      </div>
+    </div>
+  `;
+  
+  uiManager.smoothTransition(content);
+  
+  const submitBtn = document.getElementById('submit-score-btn');
+  const skipBtn = document.getElementById('skip-submit-btn');
+  
+  submitBtn.onclick = async () => {
+    // Prevent multiple submissions
+    if (isSubmittingScore) {
+      console.log('Score submission already in progress...');
+      return;
+    }
+    
+    // Set submission state and update UI
+    isSubmittingScore = true;
+    submitBtn.disabled = true;
+    submitBtn.style.background = '#95a5a6';
+    submitBtn.style.cursor = 'not-allowed';
+    submitBtn.innerHTML = '🔄 Submitting...';
+    skipBtn.disabled = true;
+    skipBtn.style.opacity = '0.5';
+    skipBtn.style.cursor = 'not-allowed';
+    
+    try {
+      await saveGameScore(score, gameMode);
+      // Встановлюємо флаг що результат збережено в поточній грі
+      if (currentGameInstance && typeof currentGameInstance.scoreSubmitted !== 'undefined') {
+        currentGameInstance.scoreSubmitted = true;
+        console.log('✅ Score submission flag set in game instance');
+      }
+    } catch (error) {
+      console.log('Blockchain save failed:', error.message);
+      alert('Failed to save score: ' + error.message);
+    } finally {
+      // Reset submission state
+      isSubmittingScore = false;
+      showMainMenu();
+    }
+  };
+  
+  document.getElementById('skip-submit-btn').onclick = () => {
+    if (!isSubmittingScore) {
+      showMainMenu();
+    }
+  };
+}
+
+// Global variable to store current game instance
+let currentGameInstance = null;
+
+// Function to set current game instance
+function setCurrentGameInstance(gameInstance) {
+  currentGameInstance = gameInstance;
+}
+
+// Function to resume current game (called from exit confirmation dialog)
+function resumeCurrentGame() {
+  if (currentGameInstance && typeof currentGameInstance.resumeFromExitDialog === 'function') {
+    console.log('🔄 Resuming game from exit dialog');
+    currentGameInstance.resumeFromExitDialog();
+    
+    // НЕ викликаємо gameManager.showGame() тому що це створить новий екземпляр гри
+    // Замість цього просто ховаємо діалог і продовжуємо поточну гру
+    console.log('🔄 Game resumed, hiding exit dialog');
+  } else {
+    console.error('❌ No current game instance or resumeFromExitDialog method not found');
+    // Якщо немає екземпляра гри, повертаємося до головного меню
+    if (typeof showMainMenu === 'function') {
+      showMainMenu();
+    }
+  }
 }
 
 // Export functions for use in game
 window.saveToLeaderboard = saveToLeaderboard;
+window.showExitConfirmationDialog = showExitConfirmationDialog;
+window.resumeCurrentGame = resumeCurrentGame;
+window.setCurrentGameInstance = setCurrentGameInstance;
 window.setGlobalBackground = () => uiManager.setGlobalBackground();
 window.showMainMenu = showMainMenu;
 
@@ -89,76 +342,130 @@ async function connectWallet(walletType, statusDiv) {
   }
 }
 
+// Дублікат функції showLeaderboard видалено
+
+// Дублікат функції showSettings видалено
+
+
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', function () {
+  console.log('🎯 DOM loaded, initializing app...');
+  uiManager.setGlobalBackground();
+
+  const app = document.getElementById('app');
+  app.style.transition = 'none';
+  app.style.opacity = '1';
+  
+  showMainMenu();
+  
+  // Ініціалізація лідерборда
+  initializeLeaderboard();
+});
+
+// Дублікат функції playMenuSound видалено
+
+// Додаємо слухач для першої взаємодії
+document.addEventListener('click', function() {
+  document.userHasInteracted = true;
+}, { once: true });
+
+// Ініціалізація лідерборда
+let leaderboardIntegration = null;
+let isLeaderboardEnabled = false;
+
+// Функція ініціалізації лідерборда
+async function initializeLeaderboard() {
+    try {
+        // Check if MetaMask is available
+        if (typeof window.ethereum === 'undefined') {
+            console.log('⚠️ MetaMask not found, leaderboard will be disabled');
+            isLeaderboardEnabled = false;
+            return;
+        }
+        
+        leaderboardIntegration = new LeaderboardIntegration();
+        
+        // GameContract deployed on Irys testnet
+        const contractAddress = "0xb2eA84Ac0ffFcE45B301B84Efff88858e588D235";
+        
+        if (contractAddress !== "0x0000000000000000000000000000000000000000") {
+            leaderboardIntegration.setContractAddress(contractAddress);
+            await leaderboardIntegration.initialize();
+            isLeaderboardEnabled = true;
+            console.log('✅ Лідерборд ініціалізовано успішно');
+            
+
+        } else {
+            console.log('⚠️ Адреса контракту не встановлена');
+        }
+    } catch (error) {
+        console.log('⚠️ Leaderboard initialization failed:', error.message);
+        isLeaderboardEnabled = false;
+    }
+}
+
+
+
+// Function to save game score after completion
+async function saveGameScore(finalScore, gameMode = 'endless') {
+    if (!isLeaderboardEnabled || !leaderboardIntegration) {
+        console.log('Leaderboard unavailable');
+        return;
+    }
+    
+    try {
+        // Connect wallet if needed
+        await leaderboardIntegration.connectWallet();
+        
+        // Get player name from settings
+        const playerName = localStorage.getItem('playerName') || 'Anonymous';
+        
+        // Show saving message
+        console.log('Saving score to blockchain...', { score: finalScore, playerName, gameMode });
+        
+        // Save score with player name and game mode
+        const result = await leaderboardIntegration.saveScore(finalScore, playerName, gameMode);
+        
+        // Show success message
+        alert(`Score saved! Transaction: ${result.transactionHash.substring(0, 10)}...`);
+        
+    } catch (error) {
+        console.error('Error saving score:', error);
+        
+        if (error.message.includes('User denied')) {
+            alert('Save cancelled by user');
+        } else {
+            alert('Save error: ' + error.message);
+        }
+    }
+}
+
 function showLeaderboard() {
   uiManager.setGlobalBackground();
 
-  const leaderboard = JSON.parse(localStorage.getItem('bubbleLeaderboard') || '[]');
-  const currentPlayerName = localStorage.getItem('playerName') || 'Anonymous';
-
-  const playerResults = leaderboard.filter(entry => entry.name === currentPlayerName);
-  const bestPlayerResult = playerResults.length > 0 ?
-    playerResults.reduce((best, current) => current.score > best.score ? current : best) : null;
-
-  let playerPosition = null;
-  if (bestPlayerResult) {
-    playerPosition = leaderboard.findIndex(entry =>
-      entry.name === bestPlayerResult.name &&
-      entry.score === bestPlayerResult.score &&
-      entry.mode === bestPlayerResult.mode
-    ) + 1;
-  }
-
-  let playerBestSection = '';
-  if (bestPlayerResult) {
-    playerBestSection = `
-      <div style="background:linear-gradient(135deg, #43cea2 0%, #185a9d 100%); border-radius:12px; padding:16px; margin:16px 0; box-shadow:0 8px 24px rgba(67,206,162,0.3); border:2px solid rgba(255,255,255,0.2);">
-        <h3 style="color:#fff; margin:0 0 12px 0; font-size:1.2rem; text-shadow:0 2px 4px rgba(0,0,0,0.3);">🌟 Your Best Result</h3>
-        <div style="background:rgba(255,255,255,0.15); border-radius:8px; padding:12px; backdrop-filter:blur(10px);">
-          <div style="display:flex; justify-content:space-between; align-items:center; color:#fff; font-weight:bold;">
-            <span style="font-size:1.1rem;">Rank #${playerPosition}</span>
-            <span style="font-size:1.3rem; color:#FFD700; text-shadow:0 2px 4px rgba(0,0,0,0.5);">${bestPlayerResult.score} pts</span>
-            <span style="font-size:1rem; opacity:0.9;">${bestPlayerResult.mode === 'timed' ? '1min' : 'Endless'}</span>
-          </div>
-        </div>
+  if (!isLeaderboardEnabled) {
+    const content = `
+      <div class="leaderboard" style="
+        background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+        border: 3px solid transparent;
+        background-clip: padding-box;
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        padding: 40px 36px;
+        text-align: center;
+        max-width: 580px;
+        margin: 0 auto;
+      ">
+        <h2 style="font-size:2rem; color:#333; margin-bottom:24px;">🏆 Leaderboard</h2>
+        <p style="color:#666; margin-bottom:20px;">Blockchain leaderboard is not available</p>
+        <button id="back-menu" style="padding:14px 28px; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer;">Back</button>
       </div>
     `;
-  } else {
-    playerBestSection = `
-      <div style="background:linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%); border-radius:12px; padding:16px; margin:16px 0; box-shadow:0 8px 24px rgba(149,165,166,0.3); border:2px solid rgba(255,255,255,0.2);">
-        <h3 style="color:#fff; margin:0 0 8px 0; font-size:1.2rem; text-shadow:0 2px 4px rgba(0,0,0,0.3);">🎮 Your Results</h3>
-        <p style="color:rgba(255,255,255,0.9); margin:0; font-size:1rem;">No games played yet. Start playing to see your best score!</p>
-      </div>
-    `;
+    uiManager.smoothTransition(content);
+    document.getElementById('back-menu').onclick = showMainMenu;
+    return;
   }
-
-  let tableRows = leaderboard.map((entry, idx) => {
-    const isCurrentPlayer = entry.name === currentPlayerName;
-    const rowStyle = isCurrentPlayer ?
-      'border-bottom:1px solid #e0e6ed; background:linear-gradient(90deg, rgba(67,206,162,0.1) 0%, rgba(24,90,157,0.1) 100%); border-left:4px solid #43cea2;' :
-      'border-bottom:1px solid #e0e6ed;';
-
-    const nameStyle = isCurrentPlayer ?
-      'padding:12px 16px; text-align:left; color:#185a9d; font-weight:bold;' :
-      'padding:12px 16px; text-align:left; color:#333;';
-
-    return `
-      <tr style="${rowStyle}">
-        <td style="padding:12px 8px; text-align:center; font-weight:bold; color:#2193b0;">${idx + 1}</td>
-        <td style="${nameStyle}">${entry.name}${isCurrentPlayer ? ' 👤' : ''}</td>
-        <td style="padding:12px 16px; text-align:center; font-weight:bold; color:#43cea2;">${entry.score}</td>
-        <td style="padding:12px 16px; text-align:center; color:#666;">${entry.mode === 'timed' ? '1min' : 'Endless'}</td>
-      </tr>
-    `;
-  }).join('');
-
-  if (!tableRows) {
-    tableRows = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#999; font-style:italic;">No results yet</td></tr>';
-  }
-
-  const recordsCount = leaderboard.length;
-  const recordsInfo = recordsCount > 10 ?
-    `<p style="color:#666; font-size:0.9rem; margin-bottom:16px;">Showing ${recordsCount} results - scroll to see more</p>` :
-    recordsCount > 0 ? `<p style="color:#666; font-size:0.9rem; margin-bottom:16px;">${recordsCount} result${recordsCount > 1 ? 's' : ''}</p>` : '';
 
   const content = `
     <div class="leaderboard" style="
@@ -178,7 +485,6 @@ function showLeaderboard() {
       overflow: hidden;
       backdrop-filter: blur(10px);
     ">
-      <!-- Декоративний градієнт фон -->
       <div style="
         position: absolute;
         top: 0;
@@ -190,7 +496,6 @@ function showLeaderboard() {
         z-index: -1;
       "></div>
       
-      <!-- Декоративна рамка -->
       <div style="
         position: absolute;
         top: -2px;
@@ -203,28 +508,24 @@ function showLeaderboard() {
         animation: borderGlow 3s ease-in-out infinite alternate;
       "></div>
       
-      <h2 style="font-size:2rem; color:#ffffff; margin-bottom:24px; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; z-index: 1;">🏆 Leaderboard</h2>
+      <h2 style="font-size:2rem; color:#333; margin-bottom:24px; letter-spacing:1px; position: relative; z-index: 1;">🏆 Leaderboard</h2>
       
-      ${playerBestSection}
+      <div id="blockchain-leaderboard-content">Loading...</div>
       
-      ${recordsInfo}
-      <div style="max-height:400px; overflow-y:auto; border:1px solid #e0e6ed; border-radius:8px; margin:16px 0; background: #ffffff; position: relative; z-index: 1;">
-        <table style="width:100%; border-collapse:collapse; font-size:1.1rem;">
-          <thead style="position:sticky; top:0; background:#e3f6fd; z-index:1;">
-            <tr style="color:#2193b0;">
-              <th style="padding:12px 8px; text-align:center; border-bottom:2px solid #43cea2;">#</th>
-              <th style="padding:12px 16px; text-align:left; border-bottom:2px solid #43cea2;">Name</th>
-              <th style="padding:12px 16px; text-align:center; border-bottom:2px solid #43cea2;">Score</th>
-              <th style="padding:12px 16px; text-align:center; border-bottom:2px solid #43cea2;">Mode</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tableRows}
-        </tbody>
-      </table>
+      <div style="margin-top: 20px;">
+        <button id="refresh-blockchain-btn" style="
+          background: #3742fa;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 10px;
+          cursor: pointer;
+          margin: 5px;
+          font-weight: bold;
+        ">Refresh</button>
       </div>
-      <!-- Видаляємо кнопку Admin Clear -->
-      <button id="back-menu" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10); position: relative; z-index: 1;">Back</button>
+      
+      <button id="back-menu" style="width:140px; padding:14px 0; font-size:1.1rem; border-radius:12px; border:none; background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff; font-weight:bold; cursor:pointer; transition:background 0.35s ease-out,transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow:0 2px 8px rgba(67,206,162,0.10); position: relative; z-index: 1; margin-top: 20px;">Back</button>
       
       <style>
         @keyframes borderGlow {
@@ -239,7 +540,73 @@ function showLeaderboard() {
 
   document.getElementById('back-menu').onclick = showMainMenu;
   
-  // Прихована комбінація клавіш для очищення лідерборду
+  // Handler for refresh button
+  document.getElementById('refresh-blockchain-btn').onclick = () => {
+    loadBlockchainLeaderboard();
+  };
+  
+  // Load blockchain leaderboard on initial display
+  loadBlockchainLeaderboard();
+  
+  // Function to load blockchain leaderboard
+  async function loadBlockchainLeaderboard() {
+    const contentDiv = document.getElementById('blockchain-leaderboard-content');
+    if (!contentDiv || !isLeaderboardEnabled) {
+      if (contentDiv) contentDiv.innerHTML = '<p style="color: #ff4757; text-align: center;">Blockchain leaderboard unavailable</p>';
+      return;
+    }
+    
+    try {
+      contentDiv.innerHTML = 'Loading...';
+      
+      const [topPlayers, totalPlayers] = await Promise.all([
+        leaderboardIntegration.getTopPlayers(10),
+        leaderboardIntegration.getTotalPlayers()
+      ]);
+      
+      let html = `<p style="text-align: center; margin-bottom: 20px; color: #666;">👥 Total players: ${totalPlayers}</p>`;
+      
+      if (topPlayers.length === 0) {
+        html += '<p style="text-align: center; color: #999;">No results yet</p>';
+      } else {
+        html += '<div style="max-height: 300px; overflow-y: auto; border-radius: 12px;">';
+        html += '<table style="width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.1);">';
+        html += '<thead><tr style="background:linear-gradient(90deg,#43cea2 0%,#185a9d 100%); color:#fff;">';
+        html += '<th style="padding:16px 12px; text-align:left; font-weight:bold;">#</th>';
+        html += '<th style="padding:16px 12px; text-align:left; font-weight:bold;">Player</th>';
+        html += '<th style="padding:16px 12px; text-align:center; font-weight:bold;">Score</th>';
+        html += '<th style="padding:16px 12px; text-align:center; font-weight:bold;">Mode</th>';
+        html += '</tr></thead><tbody>';
+        
+        topPlayers.forEach((player, index) => {
+          const playerName = player.playerName || 'Anonymous';
+          const gameMode = player.gameMode || 'endless';
+          const modeDisplay = gameMode === 'endless' ? 'Endless' : '1 Minute';
+          const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+          const rowStyle = index % 2 === 0 ? 'background:#f8f9fa;' : 'background:#fff;';
+          
+          html += `
+            <tr style="${rowStyle}">
+              <td style="padding:12px 16px; text-align:center; font-weight:bold; color:#333;">${medal}</td>
+              <td style="padding:12px 16px; color:#333; font-weight:bold;">${playerName}</td>
+              <td style="padding:12px 16px; text-align:center; font-weight:bold; color:#43cea2;">${player.score.toLocaleString()}</td>
+              <td style="padding:12px 16px; text-align:center; color:#666; font-size:0.9rem;">${modeDisplay}</td>
+            </tr>
+          `;
+        });
+        
+        html += '</tbody></table></div>';
+      }
+      
+      contentDiv.innerHTML = html;
+      
+    } catch (error) {
+      console.error('Error loading blockchain data:', error);
+      contentDiv.innerHTML = '<p style="color: #ff4757; text-align: center;">Error loading data</p>';
+    }
+  }
+  
+  // Hidden key combination for clearing leaderboard
   document.addEventListener('keydown', function(e) {
     if (e.ctrlKey && e.shiftKey && e.key === 'C') {
       e.preventDefault();
@@ -247,9 +614,16 @@ function showLeaderboard() {
       
       if (password === 'IrysOwner2024') {
         if (confirm('Admin access confirmed. Are you sure you want to clear the entire leaderboard? This action cannot be undone.')) {
-          localStorage.removeItem('bubbleLeaderboard');
-          alert('Leaderboard cleared successfully!');
-          showLeaderboard();
+          if (isLeaderboardEnabled && leaderboardIntegration) {
+            leaderboardIntegration.clearAllScores().then(() => {
+              alert('Blockchain leaderboard cleared successfully!');
+              showLeaderboard();
+            }).catch(error => {
+              alert('Error clearing blockchain leaderboard: ' + error.message);
+            });
+          } else {
+            alert('Blockchain leaderboard is not available.');
+          }
         }
       } else if (password !== null) {
         alert('Access denied. Invalid admin password.');
@@ -281,7 +655,6 @@ function showSettings() {
       overflow: hidden;
       backdrop-filter: blur(10px);
     ">
-      <!-- Декоративний градієнт фон -->
       <div style="
         position: absolute;
         top: 0;
@@ -293,7 +666,6 @@ function showSettings() {
         z-index: -1;
       "></div>
       
-      <!-- Декоративна рамка -->
       <div style="
         position: absolute;
         top: -2px;
@@ -315,7 +687,6 @@ function showSettings() {
         font-weight: 700;
       ">⚙️ Settings</h2>
       
-      <!-- Градієнтний фон переливання під текстом та кнопками -->
       <div style="
         position: absolute;
         bottom: 80px;
@@ -355,7 +726,6 @@ function showSettings() {
             font-weight: 500;
           ">
           
-          <!-- Декоративна іконка -->
           <div style="
             position: absolute;
             right: 16px;
@@ -368,7 +738,6 @@ function showSettings() {
         </div>
       </form>
       
-      <!-- Контейнер для кнопок по центру одна біля одної -->
       <div style="
         display: flex;
         justify-content: center;
@@ -491,18 +860,15 @@ function showSettings() {
     e.preventDefault();
     const name = nameInput.value.trim();
     if (name) {
-      // Перевіряємо чи ім'я вже збережено
-      const currentPlayerName = localStorage.getItem('playerName');
-      if (currentPlayerName && currentPlayerName === name) {
-        const statusDiv = document.getElementById('settings-msg');
-        if (statusDiv) {
-          statusDiv.innerHTML = '<div style="color: #e74c3c;">❌ This name is already taken, please enter a different one</div>';
-        }
-        return;
+      // Зберігаємо ім'я в localStorage
+      localStorage.setItem('playerName', name);
+      
+      const statusDiv = document.getElementById('settings-msg');
+      if (statusDiv) {
+        statusDiv.innerHTML = '<div style="color: #27ae60;">✅ Player name saved successfully!</div>';
       }
       
-      // Якщо ім'я нове або відрізняється - зберігаємо в блокчейні
-      savePlayerNameToBlockchain(name);
+      console.log('✅ Player name saved:', name);
     }
   };
 }

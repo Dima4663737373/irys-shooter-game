@@ -43,6 +43,7 @@ export class BubbleShooterGame {
     this.lastTime = 0;
     this.isPaused = false;
     this.isGameOver = false;
+    this.scoreSubmitted = false; // Флаг для відстеження чи результат вже збережений
     this.explodingBubbles = [];
     this.particles = [];
 
@@ -509,13 +510,68 @@ export class BubbleShooterGame {
   }
 
   addEventListeners() {
-    this.container.querySelector('#pause-btn').onclick = () => this.pauseGame();
-    this.container.querySelector('#resume-btn').onclick = () => this.resumeGame();
-    this.container.querySelector('#exit-btn').onclick = () => this.exitGame();
-    this.container.querySelector('#play-again-btn').onclick = () => this.showModeSelection();
-    this.container.querySelector('#back-to-menu-btn').onclick = () => this.exitGame();
-    this.canvas.addEventListener('mousemove', (e) => this.aim(e));
-    this.canvas.addEventListener('click', (e) => this.shoot(e));
+    try {
+      // Safe button event listeners with existence checks
+      const pauseBtn = this.container.querySelector('#pause-btn');
+      const resumeBtn = this.container.querySelector('#resume-btn');
+      const exitBtn = this.container.querySelector('#exit-btn');
+      const playAgainBtn = this.container.querySelector('#play-again-btn');
+      const backToMenuBtn = this.container.querySelector('#back-to-menu-btn');
+      
+      if (pauseBtn) {
+        pauseBtn.onclick = () => {
+          console.log('Pause button clicked');
+          this.pauseGame();
+        };
+      }
+      if (resumeBtn) {
+        resumeBtn.onclick = () => {
+          console.log('Resume button clicked');
+          this.resumeGame();
+        };
+      }
+      if (exitBtn) {
+        exitBtn.onclick = () => {
+          console.log('Exit button clicked');
+          this.exitGame();
+        };
+      }
+      if (playAgainBtn) {
+        playAgainBtn.onclick = () => {
+          console.log('Play again button clicked');
+          this.showModeSelection();
+        };
+      }
+      if (backToMenuBtn) {
+        backToMenuBtn.onclick = () => {
+          console.log('Back to menu button clicked');
+          this.exitGame();
+        };
+      }
+      
+      // Safe canvas event listeners
+      if (this.canvas) {
+        this.canvas.addEventListener('mousemove', (e) => {
+          try {
+            this.aim(e);
+          } catch (error) {
+            console.error('Error in mousemove handler:', error);
+          }
+        });
+        this.canvas.addEventListener('click', (e) => {
+          try {
+            console.log('Canvas clicked');
+            this.shoot(e);
+          } catch (error) {
+            console.error('Error in click handler:', error);
+          }
+        });
+      }
+      
+      console.log('Event listeners added successfully');
+    } catch (error) {
+      console.error('Error adding event listeners:', error);
+    }
   }
 
   createGrid() {
@@ -1129,6 +1185,7 @@ export class BubbleShooterGame {
     this.isPaused = false;
     this.score = 0;
     this.isGameOver = false;
+    this.scoreSubmitted = false; // Скидаємо флаг збереження результату при новій грі
     this.lastTime = null; // Змінено з 0 на null
     if (this.gameMode === 'timed') {
       this.timeLeft = 60;
@@ -1159,6 +1216,9 @@ export class BubbleShooterGame {
 
       // 📈 ПРОГРЕСИВНЕ ПІДВИЩЕННЯ СКЛАДНОСТІ (кожні 20 секунд)
       this.difficultyInterval = setInterval(() => {
+        // Перевіряємо чи гра не на паузі та не закінчена
+        if (this.isPaused || this.isGameOver) return;
+        
         this.difficultyLevel++;
         this.difficultyMultiplier = Math.min(this.difficultyMultiplier * 1.4, 8);
         this.dropSpeed = Math.max(this.dropSpeed * 0.9, 4); // Швидше опускання
@@ -1170,13 +1230,18 @@ export class BubbleShooterGame {
         // Оновлюємо швидкість опускання
         if (this.dropSpeedTimer) clearInterval(this.dropSpeedTimer);
         this.dropSpeedTimer = setInterval(() => {
-          this.dropBubblesOneRow();
+          if (!this.isPaused && !this.isGameOver) {
+            this.dropBubblesOneRow();
+          }
         }, this.dropSpeed * 1000);
 
       }, 20000);
 
       // 🪨 ЗАГРОЗЛИВІ РЯДИ (частіше з часом)
       this.threatRowTimer = setInterval(() => {
+        // Перевіряємо чи гра не на паузі та не закінчена
+        if (this.isPaused || this.isGameOver) return;
+        
         const threatChance = 0.2 + (this.difficultyLevel * 0.05);
         if (Math.random() < threatChance) {
           this.generateAdvancedThreatPattern();
@@ -1186,11 +1251,16 @@ export class BubbleShooterGame {
 
       // ⚡ ПОЧАТКОВЕ ОПУСКАННЯ
       this.dropSpeedTimer = setInterval(() => {
-        this.dropBubblesOneRow();
+        if (!this.isPaused && !this.isGameOver) {
+          this.dropBubblesOneRow();
+        }
       }, this.dropSpeed * 1000);
 
       // 🎯 СПЕЦІАЛЬНІ ПОДІЇ (кожні 45 секунд)
       this.specialEventTimer = setInterval(() => {
+        // Перевіряємо чи гра не на паузі та не закінчена
+        if (this.isPaused || this.isGameOver) return;
+        
         this.triggerSpecialEvent();
       }, 45000);
 
@@ -1806,15 +1876,20 @@ export class BubbleShooterGame {
     // Зупиняємо таймер ходу та приховуємо UI
     this.stopMoveTimer();
 
-    // Зберігаємо результат в лідерборд з інформацією про режим
-    console.log(`🏆 GAME OVER: Зберігаємо результат - Score: ${this.score}, Mode: ${this.gameMode}`);
+    // Зберігаємо результат в лідерборд з інформацією про режим тільки якщо ще не збережено
+    if (!this.scoreSubmitted) {
+      console.log(`🏆 GAME OVER: Зберігаємо результат - Score: ${this.score}, Mode: ${this.gameMode}`);
+      this.scoreSubmitted = true; // Встановлюємо флаг що результат збережено
 
-    if (typeof window.saveToLeaderboard === 'function') {
-      console.log(`✅ Функція saveToLeaderboard знайдена, викликаємо...`);
-      window.saveToLeaderboard(this.score, this.gameMode);
-      console.log(`✅ Результат збережено в лідерборд`);
+      if (typeof window.saveToLeaderboard === 'function') {
+        console.log(`✅ Функція saveToLeaderboard знайдена, викликаємо...`);
+        window.saveToLeaderboard(this.score, this.gameMode);
+        console.log(`✅ Результат збережено в лідерборд`);
+      } else {
+        console.error(`❌ Функція saveToLeaderboard не знайдена!`);
+      }
     } else {
-      console.error(`❌ Функція saveToLeaderboard не знайдена!`);
+      console.log(`⚠️ Результат вже був збережений раніше, пропускаємо збереження`);
     }
 
     // Анімація появи меню game over
@@ -1849,15 +1924,27 @@ export class BubbleShooterGame {
   }
 
   exitGame() {
-    // Зберігаємо результат перед виходом, якщо гра була розпочата і є очки
+    // Якщо гра була розпочата і є очки, показуємо діалог підтвердження
     if (this.score > 0 && !this.isGameOver) {
-      console.log(`🚪 EXIT GAME: Зберігаємо результат перед виходом - Score: ${this.score}, Mode: ${this.gameMode}`);
-
-      if (typeof window.saveToLeaderboard === 'function') {
-        console.log(`✅ Зберігаємо результат при виході з гри`);
-        window.saveToLeaderboard(this.score, this.gameMode);
+      console.log(`🚪 EXIT GAME: Показуємо діалог збереження - Score: ${this.score}, Mode: ${this.gameMode}`);
+      
+      // Зберігаємо поточний стан гри для можливості повернення
+      this.gameStateBeforeExit = {
+        isPaused: this.isPaused,
+        score: this.score,
+        gameMode: this.gameMode
+      };
+      
+      if (typeof window.showExitConfirmationDialog === 'function') {
+        window.showExitConfirmationDialog(this.score, this.gameMode);
+        return; // Не виходимо одразу, чекаємо рішення користувача
       } else {
-        console.error(`❌ Функція saveToLeaderboard не знайдена при виході!`);
+        console.error(`❌ Функція showExitConfirmationDialog не знайдена!`);
+        // Fallback до старої логіки
+        if (typeof window.saveToLeaderboard === 'function') {
+          window.saveToLeaderboard(this.score, this.gameMode);
+          return;
+        }
       }
     } else if (this.score === 0) {
       console.log(`🚪 EXIT GAME: Результат не зберігається - гра не була розпочата (score = 0)`);
@@ -1865,6 +1952,12 @@ export class BubbleShooterGame {
       console.log(`🚪 EXIT GAME: Результат вже збережено при game over`);
     }
 
+    // Виконуємо фактичний вихід з гри
+    this.performActualExit();
+  }
+  
+  // Метод для фактичного виходу з гри
+  performActualExit() {
     // Очищуємо всі таймери
     if (this.difficultyInterval) clearInterval(this.difficultyInterval);
     if (this.threatRowTimer) clearInterval(this.threatRowTimer);
@@ -1878,6 +1971,39 @@ export class BubbleShooterGame {
     // Встановлюємо правильний фон перед поверненням в меню
     if (typeof window.setGlobalBackground === 'function') window.setGlobalBackground();
     if (typeof window.showMainMenu === 'function') window.showMainMenu();
+  }
+  
+  // Метод для повернення до гри (викликається при скасуванні виходу)
+  resumeFromExitDialog() {
+    console.log('🔄 resumeFromExitDialog called');
+    if (this.gameStateBeforeExit) {
+      console.log('🔄 Restoring game state:', this.gameStateBeforeExit);
+      this.isPaused = this.gameStateBeforeExit.isPaused;
+      
+      // Якщо гра не була на паузі, продовжуємо гру
+      if (!this.isPaused) {
+        this.resumeGame();
+      } else {
+        // Якщо гра була на паузі, просто ховаємо меню паузи
+        this.pauseMenu.classList.add('hidden');
+        this.isPaused = false;
+      }
+      
+      this.gameStateBeforeExit = null;
+      console.log('🔄 Game resumed from exit dialog');
+    } else {
+      console.log('⚠️ No game state to restore, just resuming');
+      // Якщо немає збереженого стану, просто продовжуємо гру
+      this.isPaused = false;
+      if (this.pauseMenu) {
+        this.pauseMenu.classList.add('hidden');
+      }
+    }
+    
+    // Перезапускаємо ігровий цикл якщо він зупинився
+    if (!this.isGameOver) {
+      this.gameLoop();
+    }
   }
 
   // 🔥 ПОКАЗ ПОВІДОМЛЕННЯ ПРО ПІДВИЩЕННЯ СКЛАДНОСТІ
