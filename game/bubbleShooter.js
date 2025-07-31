@@ -476,7 +476,7 @@ export class BubbleShooterGame {
         <div id="pause-menu" class="hidden">
           <h2>Paused</h2>
           <button id="resume-btn">▶️ Resume</button>
-            <button id="exit-btn" style="background:#e74c3c; color:#fff;">🚪 Exit</button>
+          <button id="exit-btn" style="background:#e74c3c; color:#fff;">🚪 Exit</button>
           </div>
           <div id="game-over" class="hidden" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(255,255,255,0.85); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); padding:30px; border-radius:20px; text-align:center; box-shadow:0 16px 48px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);">
             <h2 style="margin:0 0 20px 0; color:#2C3E50;">Game Over!</h2>
@@ -1958,6 +1958,9 @@ export class BubbleShooterGame {
   
   // Метод для фактичного виходу з гри
   performActualExit() {
+    // Очищуємо збережений стан гри
+    this.gameStateBeforeExit = null;
+    
     // Очищуємо всі таймери
     if (this.difficultyInterval) clearInterval(this.difficultyInterval);
     if (this.threatRowTimer) clearInterval(this.threatRowTimer);
@@ -1976,6 +1979,17 @@ export class BubbleShooterGame {
   // Метод для повернення до гри (викликається при скасуванні виходу)
   resumeFromExitDialog() {
     console.log('🔄 resumeFromExitDialog called');
+    
+    // Показуємо canvas гри
+    if (this.canvas) {
+      this.canvas.style.display = 'block';
+    }
+    
+    // Показуємо контейнер гри
+    if (this.container) {
+      this.container.style.display = 'block';
+    }
+    
     if (this.gameStateBeforeExit) {
       console.log('🔄 Restoring game state:', this.gameStateBeforeExit);
       this.isPaused = this.gameStateBeforeExit.isPaused;
@@ -1989,7 +2003,7 @@ export class BubbleShooterGame {
         this.isPaused = false;
       }
       
-      this.gameStateBeforeExit = null;
+      // НЕ очищуємо gameStateBeforeExit тут, щоб Cancel працював кілька разів
       console.log('🔄 Game resumed from exit dialog');
     } else {
       console.log('⚠️ No game state to restore, just resuming');
@@ -2002,7 +2016,7 @@ export class BubbleShooterGame {
     
     // Перезапускаємо ігровий цикл якщо він зупинився
     if (!this.isGameOver) {
-      this.gameLoop();
+      requestAnimationFrame((time) => this.loop(time));
     }
   }
 

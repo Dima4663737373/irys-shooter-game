@@ -141,9 +141,14 @@ function showExitConfirmationDialog(score, gameMode = 'endless') {
   
   cancelExitBtn.onclick = () => {
     if (!isSubmittingScore) {
-      // Return to game - we need to call the game's resume function
+      console.log('🔄 Cancel button clicked - resuming game');
+      // Simply call resumeCurrentGame which will handle everything
       if (typeof window.resumeCurrentGame === 'function') {
         window.resumeCurrentGame();
+      } else {
+        console.error('❌ resumeCurrentGame function not found');
+        // Fallback to main menu if resume function is not available
+        showMainMenu();
       }
     }
   };
@@ -269,9 +274,7 @@ function resumeCurrentGame() {
     console.log('🔄 Resuming game from exit dialog');
     currentGameInstance.resumeFromExitDialog();
     
-    // НЕ викликаємо gameManager.showGame() тому що це створить новий екземпляр гри
-    // Замість цього просто ховаємо діалог і продовжуємо поточну гру
-    console.log('🔄 Game resumed, hiding exit dialog');
+    console.log('🔄 Game resumed and displayed');
   } else {
     console.error('❌ No current game instance or resumeFromExitDialog method not found');
     // Якщо немає екземпляра гри, повертаємося до головного меню
